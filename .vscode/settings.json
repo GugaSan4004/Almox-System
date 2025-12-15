@@ -1,0 +1,10 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 100,
+            "driver": "SQLite",
+            "name": "AlmoxDB",
+            "database": "${workspaceFolder:5 - Emprestimos}/almoxarifado.sqlite"
+        }
+    ]
+}

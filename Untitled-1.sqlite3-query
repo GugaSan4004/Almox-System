@@ -1,0 +1,63 @@
+-- database: ./almoxarifado.sqlite
+
+
+
+UPDATE sqlite_sequence SET seq = 4;
+
+DELETE FROM mails WHERE id = 5;
+
+INSERT INTO mails (name, code, fantasy, type, priority, join_date) VALUES
+("teste 001", "1", NULL, "caixa", "judicial", "2025-12-09"),
+("teste 002", "2", NULL, "carta", "simples", "2025-01-15"),
+("teste 003", "3", NULL, "pacote", "judicial", "2025-06-21"),
+("teste 004", "4", NULL, "caixa", "simples", "2025-03-09"),
+("teste 005", "5", NULL, "carta", "judicial", "2025-08-12"),
+("teste 006", "6", NULL, "pacote", "simples", "2025-04-27"),
+("teste 007", "7", NULL, "caixa", "judicial", "2025-11-03"),
+("teste 08", "8", NULL, "carta", "simples", "2025-02-19"),
+("teste 009", "9", NULL, "pacote", "judicial", "2025-10-05"),
+("teste 010", "10", NULL, "caixa", "simples", "2025-07-14"),
+
+("teste 011", "11", NULL, "carta", "judicial", "2025-05-22"),
+("teste 012", "12", NULL, "pacote", "simples", "2025-09-30"),
+("teste 013", "13", NULL, "caixa", "judicial", "2025-03-18"),
+("teste 014", "14", NULL, "carta", "simples", "2025-01-27"),
+("teste 015", "15", NULL, "pacote", "judicial", "2025-04-06"),
+("teste 016", "16", NULL, "caixa", "simples", "2025-12-01"),
+("teste 017", "17", NULL, "carta", "judicial", "2025-06-11"),
+("teste 018", "18", NULL, "pacote", "simples", "2025-08-24"),
+("teste 019", "19", NULL, "caixa", "judicial", "2025-10-16"),
+("teste 020", "20", NULL, "carta", "simples", "2025-02-08"),
+
+("teste 021", "21", NULL, "pacote", "judicial", "2025-03-29"),
+("teste 022", "22", NULL, "caixa", "simples", "2025-09-18"),
+("teste 023", "23", NULL, "carta", "judicial", "2025-05-09"),
+("teste 024", "24", NULL, "pacote", "simples", "2025-11-22"),
+("teste 025", "25", NULL, "caixa", "judicial", "2025-06-07"),
+("teste 026", "26", NULL, "carta", "simples", "2025-08-15"),
+("teste 027", "27", NULL, "pacote", "judicial", "2025-01-31"),
+("teste 028", "28", NULL, "caixa", "simples", "2025-07-20"),
+("teste 029", "29", NULL, "carta", "judicial", "2025-04-17"),
+("teste 030", "30", NULL, "pacote", "simples", "2025-12-28"),
+
+("teste 031", "31", NULL, "caixa", "judicial", "2025-02-14"),
+("teste 032", "32", NULL, "carta", "simples", "2025-10-19"),
+("teste 033", "33", NULL, "pacote", "judicial", "2025-03-01"),
+("teste 034", "34", NULL, "caixa", "simples", "2025-05-26"),
+("teste 035", "35", NULL, "carta", "judicial", "2025-09-03"),
+("teste 036", "36", NULL, "pacote", "simples", "2025-11-11"),
+("teste 037", "37", NULL, "caixa", "judicial", "2025-01-06"),
+("teste 038", "38", NULL, "carta", "simples", "2025-04-12"),
+("teste 039", "39", NULL, "pacote", "judicial", "2025-06-29"),
+("teste 040", "40", NULL, "caixa", "simples", "2025-08-20"),
+
+("teste 041", "41", NULL, "carta", "judicial", "2025-03-23"),
+("teste 042", "42", NULL, "pacote", "simples", "2025-10-27"),
+("teste 043", "43", NULL, "caixa", "judicial", "2025-07-05"),
+("teste 044", "44", NULL, "carta", "simples", "2025-09-14"),
+("teste 045", "45", NULL, "pacote", "judicial", "2025-05-04"),
+("teste 046", "46", NULL, "caixa", "simples", "2025-01-19"),
+("teste 047", "47", NULL, "carta", "judicial", "2025-12-17"),
+("teste 048", "48", NULL, "pacote", "simples", "2025-02-22"),
+("teste 049", "49", NULL, "caixa", "judicial", "2025-04-30"),
+("teste 050", "50", NULL, "carta", "simples", "2025-06-16");
