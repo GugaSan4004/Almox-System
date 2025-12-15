@@ -1,6 +1,6 @@
 import re
 import shutil
-import tempfile
+
 
 from static.py import imareocr, sqlite_core
 from static.py.cam_service import camera
@@ -8,8 +8,7 @@ from flask_socketio import SocketIO
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template, send_from_directory
 
-# PASTA = r"X:\OPERACOES\13-ALMOXARIFADO\0 - Sistema Almox"
-PASTA = r"C:\Users\GUGA4\Documents\8 - Sistema Almox"
+PASTA = r"X:\OPERACOES\13-ALMOXARIFADO\0 - Sistema Almox"
 
 app = Flask(__name__)
 Socket = SocketIO(app, async_mode='eventlet')
@@ -102,7 +101,7 @@ def picture(filename):
 
 @app.route("/get-registers", methods=["GET"])
 def get_registers():
-    print(f"{datetime.now()} | Getting tools")
+    print(f"{datetime.now()} | {request.remote_addr} Getting tools")
     
     return jsonify({
         "loaned_tools": tools_db.getAllLoanedItems(),
@@ -122,6 +121,16 @@ def missing():
 @Socket.on("update_pictures")
 def update_pictures():
     Socket.emit("update_pictures")
+    
+    
+    
+    
+
+@app.route("/user-ip", methods=["GET"])
+def getIp():
+    return jsonify({
+        "Message": request.remote_addr
+    }, 200)
 
 
 
@@ -131,7 +140,7 @@ def update_pictures():
 def get_mails():
     data = request.get_json()
 
-    print(f"{datetime.now()} | Getting Mails - Data: {data[0], data[1]}")
+    print(f"{datetime.now()} | {request.remote_addr} Getting Mails - Data: {data[0], data[1]}")
 
     return jsonify({
         "mails": mails_db.getMails(data[0], data[1])
@@ -151,7 +160,7 @@ def upload_file():
     
     file.save(tmp_path)
         
-    print(f"{datetime.now()} | file uploaded - '{tmp_path}'")
+    print(f"{datetime.now()} | {request.remote_addr} file uploaded - '{tmp_path}'")
     
     global lastImage
     lastImage = tmp_path
@@ -162,24 +171,90 @@ def upload_file():
     
 @app.route("/mails/update", methods=["POST"])
 def update():
-    list = request.get_json()
-    
-    infos = mails_db.getMails(list[0], "id")
-    
-    if infos:
-        infos = infos[0]
-        pname = str(infos[4][:3].upper()) + str(infos[2][-5:]) + str(infos[0])
-    else:
+    data = request.get_json()
+
+    mail_type = data.get("type")
+    date = data.get("date")
+
+    if mail_type == "return":
+        items = data.get("items", [])
+
+        if not items:
+            return jsonify({
+                "Message": "Nenhuma devolução informada"
+            }, 400)
+
+        inserted = []
+
+        for item in items:
+            code = item.get("code")
+            motivo = item.get("motivo")
+
+            if not code:
+                continue
+
+            infos = mails_db.getMails(code, "id")
+            
+            if not infos:
+                continue
+
+            infos = infos[0]
+
+            pname = (
+                str(infos[4][:3].upper()) +
+                str(infos[2][-5:]) +
+                str(infos[0])
+            )
+
+            dest_path = f"pictures/mails/{pname}.jpg"
+
+            shutil.copy(lastImage, dest_path)
+            
+            mails_db.updatePicture(
+                motivo,
+                date,
+                pname,
+                code,
+                "returned"
+            )
+
+            inserted.append(code)
+
         return jsonify({
-            "Message": 'Error: Correspondencia não encontrada!'
+            "Message": "Devoluções registradas",
+            "type": "returns"
+        }, 200)
+    
+    code = data.get("code")
+    user = data.get("user")
+
+    if not code or not user:
+        return jsonify({
+            "Message": "Dados inválidos"
+        }, 400)
+
+    infos = mails_db.getMails(code, "id")
+
+    if not infos:
+        return jsonify({
+            "Message": "Correspondência não encontrada"
         }, 404)
-    
-    dest_path = "pictures/mails/" + pname + ".jpg"
+
+    infos = infos[0]
+
+    pname = (
+        str(infos[4][:3].upper()) +
+        str(infos[2][-5:]) +
+        str(infos[0])
+    )
+
+    dest_path = f"pictures/mails/{pname}.jpg"
     shutil.move(lastImage, dest_path)
-    
-    mails_db.updatePicture(list[1], list[2], pname, list[0])
+
+    mails_db.updatePicture(user, date, pname, code, "shipped")
+
     return jsonify({
-        "Message": "ok",
+        "Message": "Entrega registrada",
         "PictureName": pname
     }, 200)
     
