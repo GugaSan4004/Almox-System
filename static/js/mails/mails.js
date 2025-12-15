@@ -1,6 +1,10 @@
 let last_filter = ""
 let last_orderBy = "id"
 
+const preview = document.createElement("img");
+preview.className = "picture_preview";
+document.body.appendChild(preview);
+
 function changeShipContainer(event) {
     document.querySelectorAll(".ship-container").forEach(container => {
         container.style.display = "none";
@@ -87,9 +91,31 @@ function getCorrespondences(filter, orderBy) {
 
                         content_container.appendChild(td);
 
-                        td.addEventListener("click", function () {
-                            window.open(td.dataset.img, "_blank");
-                        })
+                        if (td.dataset.img) {
+                            td.style.cursor = "pointer"
+                            
+                            td.addEventListener("click", function () {
+                                window.open(td.dataset.img, "_blank");
+                            })
+
+                            td.addEventListener("mouseover", function() {
+                                if (preview.src !== td.dataset.img) {
+                                    preview.src = td.dataset.img;
+                                    preview.style.display = "block";
+                                }
+                            });
+
+                            td.addEventListener("mouseout", function() {
+                                preview.style.display = "none";
+                            });
+
+                            td.addEventListener("mousemove", function(e) {
+                                preview.style.left = (e.pageX - 360) + "px";
+                                preview.style.top  = (e.pageY - 180) + "px";
+                            });
+                        }
+                        
+
 
                     } else {
                         const field = document.createElement("td");
@@ -135,6 +161,12 @@ function updateReceiver() {
     })
     .then(response => response.json())
     .then(json => {
+        const text = json
+            .replace(/\r/g, "")
+            .replace(/\n+/g, "\n")
+            .replace(/\s+/g, " ")
+            .toUpperCase();
+        
         const regexCodigo = /([A-Z]{2}\d{9}[A-Z]{2})/;
         const codigoMatch = json.replaceAll(" ", "").toUpperCase().match(regexCodigo);
         const codigo = codigoMatch ? codigoMatch[1] : null;
@@ -145,6 +177,28 @@ function updateReceiver() {
         
         const regexData = /DATA:\s*([0-9Iil\/]{6,12})/i;
         const dataMatch = json.match(regexData);
+
+        const returnDetected = json.replaceAll(" ", "").toUpperCase().includes("DEVOLUCAO") ||
+            json.replaceAll(" ", "").toUpperCase().includes("DEVOLUÇÃO")
+
+        let ARCodes, reasons, result
+
+        if(returnDetected) {
+            const regexAllCodes = /[A-Z]{2}\d{9}[A-Z]{2}/g;
+            ARCodes = text.match(regexAllCodes) || [];
+
+            const regexReasons = /DESCONHECIDO|MUDOU[- ]SE|RECUSADO\s*POR\s*:\s*[A-Z ]+/g;
+            reasons = text.match(regexReasons) || [];
+        }
+
+        if (ARCodes) {
+            result = ARCodes.map((ar, index) => ({
+                code: ar,
+                motivo: reasons[index] || "MOTIVO NÃO IDENTIFICADO"
+            }));
+        }
+
+
 
         let data = null
 
@@ -183,19 +237,16 @@ function updateReceiver() {
         const body = document.createElement("div")
         body.classList.add("sc-body")
 
-        const code_input = document.createElement("input")
         const user_input = document.createElement("input")
         const data_input = document.createElement("input")
-                        
+        const type_select = document.createElement("select")
+        
         const submit = document.createElement("button")
         
         submit.type = "submit"
         submit.classList.add("submit")
         submit.innerHTML = "Registrar"
-
-        code_input.value = codigo
-        code_input.id = "code_input"
-
+        
         user_input.value = recebido
         user_input.id = "user_input"
 
@@ -203,31 +254,157 @@ function updateReceiver() {
         data_input.value = data
         data_input.id = "data_input"
 
+        type_select.id = "type_mail"
+        type_select.name = "type"
+        type_select.disabled = true
+        type_select.innerHTML = `
+            <option value="return">Devolução</option>
+            <option value="shipment">Entrega</option>
+        `
 
-        body.appendChild(code_input)
-        body.appendChild(user_input)
+        if (returnDetected) {
+            const div_container = document.createElement("div");       
+            div_container.classList.add("mail-code-list")
+
+            body.style.gridTemplateColumns = "1fr 1fr";
+            submit.style.gridColumn = "1 / span 2";
+
+            result.forEach(item => {
+                const ar_input = document.createElement("input");
+                const reason_input = document.createElement("input");
+
+                ar_input.value = item.code;
+                reason_input.value = item.motivo;
+                
+                reason_input.id = item.code;
+
+                ar_input.classList.add("ar_code")
+                reason_input.classList.add("reason")
+
+                div_container.appendChild(ar_input);
+                div_container.appendChild(reason_input);
+            });
+
+            body.appendChild(div_container)
+        } else {
+            const code_input = document.createElement("input")
+            code_input.value = codigo
+            code_input.id = "code_input"
+
+            type_select.value = "shipment"
+
+            body.appendChild(code_input)
+            body.appendChild(user_input)
+        }
+        
+        body.appendChild(type_select)
         body.appendChild(data_input)
         body.appendChild(submit)
 
         container.appendChild(body)
         
         submit.addEventListener("click", () => {
+            function collectReturnData() {
+                const codes = document.querySelectorAll(".ar_code");
+                const reasons = document.querySelectorAll(".reason");
+
+                const items = [];
+
+                codes.forEach((codeInput, index) => {
+                    items.push({
+                        code: codeInput.value.trim(),
+                        motivo: reasons[index]?.value.trim() || ""
+                    });
+                });
+
+                return items;
+            }
+
             const [day, month, year] = data_input.value.split("-");
+
+            let payload
+
+            if (returnDetected) {
+                const items = collectReturnData();
+
+                if (!items.length) {
+                    alert("Nenhum código AR encontrado.");
+                    return;
+                }
+
+                if (items.some(i => !i.code)) {
+                    alert("Existe código AR vazio.");
+                    return;
+                }
+
+                payload = {
+                    type: "return",
+                    date: `${year}-${month}-${day}`,
+                    items
+                };
+            } else {
+                payload = {
+                    type: "shipment",
+                    date: `${year}-${month}-${day}`,
+                    code: code_input.value,
+                    user: user_input.value
+                }
+            }
 
             fetch("/mails/update", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify([code_input.value, user_input.value, `${year}-${month}-${day}`])
+                body: JSON.stringify(payload)
             })
             .then(response => response.json())
             .then(data => {
                 if(data[1] == 200) {
-                    focuses("db-container")
-                    getCorrespondences(data[0].PictureName)
+                    if (data[0].type == "returns") {
+                        focuses("db-container")
+                    } else {
+                        focuses("db-container")
+                        getCorrespondences(data[0].PictureName)
 
-                    setTimeout(() => document.querySelectorAll(".db-container-values td").forEach(b => b.classList.add("highlight")), 100)
+                        setTimeout(() => document.querySelectorAll(".db-container-values td").forEach(b => b.classList.add("highlight")), 100)
+                    
+                        container.innerHTML = `        
+                            <div id="to_almox_button" class="to_almox">
+                                <label for="to_almox">Para o Almoxarifado</label>
+                                <input type="checkbox" id="to_almox" name="to_almox" value="to_almox" onchange="changeShipContainer(event)">
+                            </div>
+                                        
+                            <form class="ship-container ship-almox" id="ship-almox" style="display: none;">
+                                <h1 id="reception-insert-message">Preencha os campos a baixo!</h1>
+
+                                <input id="mail_code" name="code" type="text" placeholder="Codigo AR" required="">
+
+                                <select id="receiver_name" name="type" required="">
+                                    <option value="kayro">Kayro</option>
+                                    <option value="guilherme">Guilherme</option>
+                                    <option value="gustavo">Gustavo</option>
+                                    <option value="other">Outro(a)</option>
+                                </select>
+
+                                <select id="sender_name" name="type" required="">
+                                    <option value="yara">Yara</option>
+                                    <option value="lidia">Lidia</option>
+                                    <option value="other">Outro(a)</option>
+                                </select>
+
+                                <button class="submit" onclick="receivedOnReception()" type="button" id="reception-submit">Enviar</button>
+                            </form>
+
+                            <div class="ship-container ship-mall" id="ship-mall">
+                                <input type="file" id="file_input" style="display: none">
+                                <div id="image-container" class="image-container">
+                                    Clique para selecionar uma imagem!
+                                </div>
+                                <button class="submit" id="updateReceiver-button" onclick="updateReceiver()">Enviar</button>
+                            </div>
+                        `
+                    }
                 } else if(data[1] == 404) {
                     document.getElementById("code_input").classList.add("not_found")
 
@@ -257,6 +434,24 @@ function focuses(container) {
     actual_focus = String(container)
 
     if(container == "ship-container") {
+        fetch("/user-ip", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(["192.168.7.20", "192.168.7.0"].includes(data[0].Message) && !document.getElementById("to_almox_button")) {
+                document.getElementById(container).insertAdjacentHTML('afterbegin', `
+                <div id="to_almox_button" class="to_almox">
+                    <label for="to_almox">Para o Almoxarifado</label>
+                    <input type="checkbox" id="to_almox" name="to_almox" value="to_almox" onchange="changeShipContainer(event)">
+                </div>
+            `)
+            }
+        })
+
         const img_container = document.getElementById("image-container")
 
         img_container.addEventListener("click", () => {
@@ -271,7 +466,6 @@ function focuses(container) {
                 }
             })
         })
-
     }
 }
 
@@ -456,8 +650,8 @@ document.addEventListener("keydown", function (event) {
         }
 
         if (
-            (currentIndex == 5 && event.key === 'Enter') ||
-            ((currentIndex == 3 || currentIndex == 4) &&
+            (currentIndex == 6 && event.key === 'Enter') ||
+            ((currentIndex == 3 || currentIndex == 4 || currentIndex == 5) &&
              (event.key === 'Enter' || event.key === 'Tab'))
         ) {
             document.getElementById(inputs[currentIndex])?.click();
@@ -523,30 +717,5 @@ document.addEventListener("keydown", function (event) {
         if (currentIndex == 3 && event.key === 'Enter') {
             document.getElementById(inputs[currentIndex])?.click();
         }
-    }
-});
-
-const preview = document.createElement("img");
-preview.className = "picture_preview";
-document.body.appendChild(preview);
-
-document.addEventListener("mousemove", function(e) {
-    if (preview.style.display === "block") {
-        preview.style.left = (e.pageX - 360) + "px";
-        preview.style.top  = (e.pageY - 180) + "px";
-    }
-});
-
-document.addEventListener("mouseover", function(e) {
-    if (e.target.classList.contains("picture_link") && e.target.getAttribute("data-img")) {
-        const img = e.target.getAttribute("data-img");
-        preview.src = img;
-        preview.style.display = "block";
-    }
-});
-
-document.addEventListener("mouseout", function(e) {
-    if (e.target.classList.contains("picture_link")) {
-        preview.style.display = "none";
     }
 });

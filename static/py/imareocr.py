@@ -1,10 +1,13 @@
 import os
+
+os.environ["PATH"] += os.pathsep + r"C:\poppler\Library\bin"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"X:\OPERACOES\13-ALMOXARIFADO\0 - Sistema Almox\api-key\rock-tower-480410-d2-446c98045165.json"
+
 import io
 from google.cloud import vision_v1
 from pdf2image import convert_from_path
 from datetime import datetime, timedelta, timezone
 
-os.environ["PATH"] += os.pathsep + r"C:\poppler\Library\bin"
 
 def load_image(img_path):
     if img_path.lower().endswith(".pdf"):

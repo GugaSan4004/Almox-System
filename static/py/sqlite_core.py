@@ -13,14 +13,16 @@ class init:
             self.temp_orderBy = ""
             self.direction_orderBy = ""
             
-        def updatePicture(self, receive_name, receive_date, photo_id, code):
-            cur = self.connection.cursor()
-            cur.execute(
-                "UPDATE mails SET receive_name = ?, receive_date = ?, photo_id = ?, status = 'shipped' WHERE code = ?",
-                (receive_name, receive_date, photo_id, code.upper())
-            )
-            self.connection.commit()
-            
+        def updatePicture(self, receive_name, receive_date, photo_id, code, status):
+            try:
+                cur = self.connection.cursor()
+                cur.execute(
+                    "UPDATE mails SET receive_name = ?, receive_date = ?, photo_id = ?, status = ? WHERE code = ?",
+                    (receive_name, receive_date, photo_id, status, code.upper())
+                )
+                self.connection.commit()
+            except Exception as e:
+                print(e)
             cur.close()
 
         def updateReceiver(self, code, receiver, sender):
@@ -41,7 +43,7 @@ class init:
             try:
                 cur.execute("""
                     INSERT INTO mails (name, code, fantasy, type, priority, status, join_date)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, (
                         name.title(), 
                         code.upper(), 
@@ -54,6 +56,7 @@ class init:
                 )
                 self.connection.commit()
             except Exception as e:
+                print(e)
                 return e
             cur.close()
         

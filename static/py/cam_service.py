@@ -45,7 +45,7 @@ class CameraWorker(threading.Thread):
                     "07":"jul","08":"ago","09":"set","10":"out","11":"nov","12":"dez"
                 }
 
-                main_folder = r"X:\OPERACOES\13-ALMOXARIFADO\8 - Sistema Almox\pictures\loans"
+                main_folder = r"X:\OPERACOES\13-ALMOXARIFADO\0 - Sistema Almox\pictures\loans"
                 year = now.strftime("%Y")
                 month_name = months[month_num]
 

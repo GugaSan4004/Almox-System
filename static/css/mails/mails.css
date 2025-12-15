@@ -221,14 +221,14 @@ select {
 
 .ship-container {
     height: fit-content;
+    display: grid;
+    justify-items: center;
 }
 
 .ship-container .image-container {
     cursor: pointer;
     border: 3px solid var(--color--green-other);
     padding: 2vmin;
-
-    margin-bottom: 24px;
 
     height: 50vh;
 
@@ -252,6 +252,8 @@ select {
     height: 6vh;
 
     justify-self: center;
+
+    margin-top: 24px;
 }
 
 .ship-almox button {
@@ -265,6 +267,11 @@ select {
     height: 1cm;
     width: -webkit-fill-available;
     width: -moz-available;
+}
+
+.ship-almox input,
+.ship-almox select {
+    width: 100%;
 }
 
 .to_almox {
@@ -286,9 +293,7 @@ select {
 
 .loading {
     position: relative;
-    width: fit-content;
     overflow: hidden;
-    left: 16vh;
 }
 
 .loading img {
@@ -320,7 +325,7 @@ select {
 }
 
 .pp-small .picture-preview {
-    height: 34vh;
+    height: 45vh;
 }
 
 .pp-small.image-container {
@@ -335,8 +340,8 @@ select {
 
 .sc-body {
     display: grid;
-    grid-template-columns: 1fr 36vh 1fr;
-    grid-template-rows: 6vh 1.5cm;
+    grid-template-columns: 1fr 36vh 1fr 1fr;
+    grid-template-rows: 4vh 1.5cm;
     gap: 3vh;
 }
 
@@ -346,11 +351,15 @@ select {
 
 .sc-body button {
     margin-top: 2vh;
-    grid-column: 1 / span 3;
+    grid-column: 1 / span 4;
     background-color: var(--color--green-other);
     border-radius: 8px;
     border-color: #fff;
     cursor: pointer;
+}
+
+.sc-body select {
+    height: 1.2cm;
 }
 
 .erro-container {
@@ -366,7 +375,7 @@ select {
 }
 
 :disabled {
-    background-color: var(--color--active) !important;
+    background-color: #292764 !important;
     color: #fff !important;
 }
 
@@ -395,7 +404,6 @@ select {
 
 .picture_link {
     text-decoration: underline;
-    cursor: pointer;
 }
 
 .picture_preview {
@@ -425,6 +433,16 @@ select {
 .ship-almox h1{
     font-size: 2rem;
     margin-bottom: 6vh;
+}
+
+.mail-code-list {
+    position: absolute;
+    top: 4.7cm;
+    left: 1cm;
+    display: grid;
+    row-gap: 8px;
+    grid-template-columns: repeat(2, 1fr);
+    column-gap: 7px;
 }
 
 @keyframes shake {
