@@ -70,16 +70,6 @@ O Almox-System é uma aplicação web desenvolvida para gerenciar operações de
 - `pictures/`: Diretório para armazenar imagens capturadas.
 - `almoxarifado.sqlite`: Banco de dados SQLite.
 
-## Contribuição
-
-Contribuições são bem-vindas! Siga estes passos:
-
-1. Fork o projeto.
-2. Crie uma branch para sua feature (`git checkout -b feature/nova-feature`).
-3. Commit suas mudanças (`git commit -am 'Adiciona nova feature'`).
-4. Push para a branch (`git push origin feature/nova-feature`).
-5. Abra um Pull Request.
-
 ## Licença
 
 Este projeto está licenciado sob a [MIT License](LICENSE).
