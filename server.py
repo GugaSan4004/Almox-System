@@ -16,7 +16,8 @@ from flask import Flask, request, jsonify, render_template, send_from_directory
 
 
 
-FOLDER = r"\\192.168.7.252\dados\OPERACOES\13-ALMOXARIFADO\0 - Sistema Almox"
+# FOLDER = r"\\192.168.7.252\dados\OPERACOES\13-ALMOXARIFADO\0 - Sistema Almox"
+FOLDER = r"C:\Users\GUGA4\Documents\8 - Sistema Almox"
 
 imgReader = imareocr.init(FOLDER)
 sqlite = sqlite_core.init(FOLDER)
@@ -94,6 +95,8 @@ def getIp():
 @app.route("/pictures/<path:filename>")
 def picture(filename):
     return send_from_directory(FOLDER + r"\pictures", filename)
+
+
 
 # ################################ #
 #          Routes to the           #
@@ -396,7 +399,7 @@ def reception_received():
             else:
                 return jsonify({
                     "Message": "A correspondencia ja foi coletada!",
-                    "Values": [f"Recebedor: {filteredMails[6].title()}" , f"Liberador: {filteredMails[7].title()}"]
+                    "Values": [f"Recebedor: {filteredMails[6].title()}" , f"Liberador: {filteredMails[7].title()}", f"Data: {filteredMails[8]}"]
                 }, 409)
         else:
             return jsonify({
@@ -407,28 +410,44 @@ def reception_received():
             "Message": "Código de rastreio invalido!"
         }, 422)
 
-@app.route("/mails/change-fantasy-name", methods=["POST"])
-def change_fantasy():
+@app.route("/mails/update-column", methods=["POST"])
+def update_column():
     data = request.get_json()
 
     code = data.get("code")
+    column = data.get("column")
     new_value = data.get("new_value")
     old_value = data.get("old_value")
 
-    mails_db.updateFantasy(str(code), str(new_value))
+    try:
+        mails_db.update(str(code), str(new_value), str(column))
 
-    sqlite.log_edit(
-        entity="/mails/change-fantasy-name",
-        entity_id=code,
-        field="fantasy",
-        old=old_value,
-        new=new_value,
-        ip=request.remote_addr
-    )
+        sqlite.log_edit(
+            entity="/mails/change-column",
+            entity_id=code,
+            field=column,
+            old=old_value,
+            new=new_value,
+            ip=request.remote_addr
+        )
+    except Exception as e:
+        sqlite.log_edit(
+            entity=f"/mails/change-column -> Error: {e}",
+            entity_id=code,
+            field=column,
+            old=old_value,
+            new=new_value,
+            ip=request.remote_addr
+        )
+        return jsonify({
+            "Message": f"Erro não esperado!"
+        }, 400)
+    else:
+        return jsonify({
+            "Message": "Nome atualizado com sucesso!"
+        }, 200)
 
-    return jsonify({
-        "Message": "Nome atualizado com sucesso!"
-    }, 200)
+
 
 
 # ################################ #

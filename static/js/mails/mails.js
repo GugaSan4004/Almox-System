@@ -75,7 +75,7 @@ function getCorrespondences(filter, orderBy) {
 
         Object.entries(json[0].mails).forEach(data => {
             Object.entries(data[1]).forEach((correpondence, index, array) => {
-                if (index !== 6 && index !== 7 && index !== 8) {
+                if (index !== 6 && index !== 7 && index !== 8 &&  index !== 9) {
                     if (index === array.length - 1) {
                         const td = document.createElement("td");
                         td.classList.add("picture_link");
@@ -83,9 +83,9 @@ function getCorrespondences(filter, orderBy) {
                         td.textContent = correpondence[1];
                         td.dataset.img = data[1][12] ? `/pictures/mails/${data[1][12]}.jpg` : "";
                         
-                        if (data[1][8] == "on_reception") {
+                        if (data[1][9] == "on_reception") {
                             td.classList.add("on_reception")
-                        } else if (data[1][8] == "returned") {
+                        } else if (data[1][9] == "returned") {
                             td.classList.add("returned")
                         }
 
@@ -119,16 +119,16 @@ function getCorrespondences(filter, orderBy) {
                                 preview.style.top  = (e.pageY - 180) + "px";
                             });
                         }
-                    } else if(index === 3) {
+                    } else if(index === 3 || index === 1) {
                         const field = document.createElement("input");
 
-                        field.value = data[1][3];
-                        field.classList.add("fantasy_name")
+                        field.value = data[1][index];
+                        field.classList.add("input_db")
                         field.id = data[1][2]
 
-                        if (data[1][8] == "on_reception") {
+                        if (data[1][9] == "on_reception") {
                             field.classList.add("on_reception")
-                        } else if (data[1][8] == "returned") {
+                        } else if (data[1][9] == "returned") {
                             field.classList.add("returned")
                         }
                         
@@ -139,13 +139,14 @@ function getCorrespondences(filter, orderBy) {
 
                         field.addEventListener("keydown", function(e) {
                             if(e.key === 'Enter') {
-                                fetch("/mails/change-fantasy-name", {
+                                fetch("/mails/update-column", {
                                     method: "POST",
                                     headers: {
                                         "Content-Type": "application/json"
                                     },
                                     body: JSON.stringify({
                                         code: field.id,
+                                        column: headers[index].id,
                                         new_value: field.value,
                                         old_value: old_value
                                     })
@@ -161,9 +162,9 @@ function getCorrespondences(filter, orderBy) {
                         content_container.appendChild(field);
                     } else {
                         const field = document.createElement("td");
-                        if (data[1][8] == "on_reception") {
+                        if (data[1][9] == "on_reception") {
                             field.classList.add("on_reception")
-                        } else if (data[1][8] == "returned") {
+                        } else if (data[1][9] == "returned") {
                             field.classList.add("returned")
                         }
 
@@ -243,16 +244,6 @@ function updateReceiver() {
                 motivo: reasons[index] || "MOTIVO NÃO IDENTIFICADO"
             }));
         }
-
-        
-        console.log(json
-            .replace(/\r/g, "")
-            .replace(/\n+/g, "\n")
-            .replace(/\s+/g, " ")
-            .toUpperCase())
-        console.log(ARCodes, reasons, result)
-
-
 
         let data = null
 
@@ -431,7 +422,7 @@ function updateReceiver() {
                             </div>
                                         
                             <form class="ship-container ship-almox" id="ship-almox" style="display: none;">
-                                <h1 id="reception-insert-message">Preencha os campos a baixo!</h1>
+                                <h1 id="reception-insert-message">Preencha os campos abaixo!</h1>
 
                                 <input id="mail_code" name="code" type="text" placeholder="Codigo AR" required="">
 
@@ -637,6 +628,8 @@ function receivedOnReception() {
                     ${data[0].Values[0]}
                     <br>
                     ${data[0].Values[1]}
+                    <br>
+                    ${data[0].Values[2]}
                 `
                 break
             default:
@@ -657,11 +650,18 @@ document.addEventListener("keydown", function (event) {
         event.target.classList.remove("not_found")
         
         if (actual_focus === "ship-container") {
-            document.getElementById("error_message").innerText = ""
+            errorh1 = document.getElementById("error_message")
+
+            if(errorh1) {
+                errorh1.innerText = ""
+            } else {
+                document.getElementById("reception-insert-message").innerText = "Preencha os campos abaixo!"
+            } 
+            
         } else if (actual_focus === "insert-container") {
-            document.getElementById("insert-message").innerText = "Preencha os campos a baixo!"
+            document.getElementById("insert-message").innerText = "Preencha os campos abaixo!"
         } else if (actual_focus === "reception-container") {
-            document.getElementById("reception-insert-message").innerText = "Preencha os campos a baixo!"
+            document.getElementById("reception-insert-message").innerText = "Preencha os campos abaixo!"
         }
     }
 

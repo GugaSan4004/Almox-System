@@ -41,8 +41,8 @@ class init:
             cur = self.connection.cursor()
             try:
                 cur.execute(
-                    "UPDATE mails SET ReceivedOnReceptionBy = ?, SendedOnReceptionBy = ?, status = 'almox' WHERE code = ?",
-                    (receiver, sender, code.upper())
+                    "UPDATE mails SET ReceivedOnReceptionBy = ?, SendedOnReceptionBy = ?, LeaveReceptionAt = ?, status = 'almox' WHERE code = ?",
+                    (receiver, sender, str(datetime.now().strftime("%d-%m-%Y")), code.upper())
                 )
                 self.connection.commit()
             except Exception as e:
@@ -50,13 +50,13 @@ class init:
             
             cur.close()
 
-        def updateFantasy(self, code, fantasy):
+        def update(self, code: str, value: str, column: str):
             cur = self.connection.cursor()
             try:
                 cur.execute(
-                    "UPDATE mails SET fantasy = ? WHERE code = ?",
+                    f"UPDATE mails SET {column.lower()} = ? WHERE code = ?",
                     (
-                    fantasy.title(),
+                    value.title(),
                     code.upper()
                     )
                 )
@@ -88,7 +88,6 @@ class init:
                 )
                 self.connection.commit()
             except Exception as e:
-                print(e)
                 return e
             cur.close()
         
