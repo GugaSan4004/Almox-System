@@ -6,3 +6,5 @@ __pycache__/
 *.sqlite
 */__pycache__/*
 .vscode
+.vscode/*
+almoxarifado.sqlite
