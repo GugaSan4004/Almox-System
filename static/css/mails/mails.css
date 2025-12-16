@@ -47,6 +47,11 @@ main {
     height: 88vh;
 }
 
+.fantasy_name {
+    border: none !important;
+    height: fit-content !important;
+}
+
 .container {
 
     justify-self: center;
@@ -444,6 +449,7 @@ select {
     grid-template-columns: repeat(2, 1fr);
     column-gap: 7px;
 }
+
 
 @keyframes shake {
     0%, 100% { transform: translateX(0); }

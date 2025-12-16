@@ -13,7 +13,7 @@ window.onload = function () {
             const code = e.target.value;
 
             if (code.trim() !== "") {
-                fetch("/tool-loans/add-tool", {
+                fetch("/tools-loan/add-tool", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ code: code })
@@ -49,11 +49,11 @@ window.onload = function () {
                         msg.innerText = `${data.movement[6].replace(/\b\w/g, c => c.toUpperCase())} de ${data.item[2].toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}`;
                         msg.classList.add("img-msg");
 
-                        svg.src = `/static/imgs/tool-loans/${(data.item[2]).toLowerCase().replaceAll(" ", "-").replaceAll("'", "").replaceAll('"', "")}.png`;
+                        svg.src = `/static/imgs/tools-loan/${(data.item[2]).toLowerCase().replaceAll(" ", "-").replaceAll("'", "").replaceAll('"', "")}.png`;
                         svg.alt = `${data.item[2]}`;
                         svg.classList.add("icon");
 
-                        img.src = `/pictures/loans/${data.movement[4]}/${data.movement[3]}/${String(data.movement[0]).padStart(6, '0')}.jpg`;
+                        img.src = `/tools-loan/pictures/loans/${data.movement[4]}/${data.movement[3]}/${String(data.movement[0]).padStart(6, '0')}.jpg`;
                         img.alt = `${data.item[2]}`;
                         img.classList.add("picture");
 

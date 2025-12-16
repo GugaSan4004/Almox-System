@@ -81,7 +81,7 @@ function getCorrespondences(filter, orderBy) {
                         td.classList.add("picture_link");
                         
                         td.textContent = correpondence[1];
-                        td.dataset.img = data[1][12] ? `/pictures/mails/${data[1][12]}.jpg` : "";
+                        td.dataset.img = data[1][12] ? `/tools-loan/pictures/mails/${data[1][12]}.jpg` : "";
                         
                         if (data[1][8] == "on_reception") {
                             td.classList.add("on_reception")
@@ -114,9 +114,31 @@ function getCorrespondences(filter, orderBy) {
                                 preview.style.top  = (e.pageY - 180) + "px";
                             });
                         }
-                        
+                    } else if(index === 3) {
+                        const field = document.createElement("input");
 
+                        field.value = data[1][3];
+                        field.classList.add("fantasy_name")
+                        field.id = data[1][2]
 
+                        field.addEventListener("keydown", function(e) {
+                            if(e.key === 'Enter') {
+                                fetch("/mails/change-fantasy-name", {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json"
+                                    },
+                                    body: JSON.stringify({
+                                        code: field.id,
+                                        new_value: field.value
+                                    })
+                                })
+
+                                field.blur(); 
+                            }
+                        })
+
+                        content_container.appendChild(field);
                     } else {
                         const field = document.createElement("td");
                         if (data[1][8] == "on_reception") {
@@ -140,7 +162,11 @@ function getCorrespondences(filter, orderBy) {
 function updateReceiver() {
     const input = document.getElementById("file_input");
 
-    document.querySelector(".to_almox").style.display = "none"
+    const btn = document.querySelector(".to_almox")
+
+    if (btn) {
+        btn.style.display = "none"
+    }
 
     const formData = new FormData();
     formData.append("file", input.files[0]);
@@ -442,7 +468,7 @@ function focuses(container) {
         })
         .then(response => response.json())
         .then(data => {
-            if(["192.168.7.20", "192.168.7.0"].includes(data[0].Message) && !document.getElementById("to_almox_button")) {
+            if(["192.168.7.20", "192.168.7.0", "127.0.0.1"].includes(data[0].Message) && !document.getElementById("to_almox_button")) {
                 document.getElementById(container).insertAdjacentHTML('afterbegin', `
                 <div id="to_almox_button" class="to_almox">
                     <label for="to_almox">Para o Almoxarifado</label>
@@ -496,7 +522,7 @@ function register() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
-    })
+})
     .then(response => response.json())
     .then(data => {
 
@@ -541,7 +567,7 @@ function receivedOnReception() {
         sender: sender.value
     };
 
-    fetch("/mails/received", {
+    fetch("/mails/update-reception-received", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -663,20 +689,6 @@ document.addEventListener("keydown", function (event) {
         const currentIndex = inputs.indexOf(activeElement.id);
 
         const nextIndex = (currentIndex + 1) % inputs.length;
-        const prevIndex = (currentIndex - 1 + inputs.length) % inputs.length;
-
-
-        if (event.shiftKey) {
-            const target = document.getElementById(inputs[prevIndex]);
-            target.focus()
-            return;
-        } else if(event.key === 'Tab') {
-            const target = document.getElementById(inputs[nextIndex]);
-            target.focus();
-        } else if(event.target.id != "search_input") {
-            const target = document.getElementById(inputs[0]);
-            target.focus();
-        }
 
         if (currentIndex == 0 && event.key === 'Enter') {
             document.getElementById(inputs[nextIndex])?.click();

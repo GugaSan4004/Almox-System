@@ -1,2 +1,5 @@
 pictures/
 api-key/
+__pycache__/
+*.pyc
+*.pyo

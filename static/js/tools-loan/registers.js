@@ -116,7 +116,7 @@ function updateGrid(data) {
 }
 
 function load() {
-    fetch("/get-registers", {
+    fetch("/tools-loan/get-registers", {
         method: "GET",
         headers: { "Content-Type": "application/json" }
     })

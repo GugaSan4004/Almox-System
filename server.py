@@ -1,22 +1,51 @@
+import os
 import re
 import shutil
+import logging
 
-
-from static.py import imareocr, sqlite_core
-from static.py.cam_service import camera
-from flask_socketio import SocketIO
 from datetime import datetime
+from flask_socketio import SocketIO
+from static.py.cam_service import camera
+from static.py import imareocr, sqlite_core
 from flask import Flask, request, jsonify, render_template, send_from_directory
 
-PASTA = r"X:\OPERACOES\13-ALMOXARIFADO\0 - Sistema Almox"
 
-app = Flask(__name__)
-Socket = SocketIO(app, async_mode='eventlet')
 
-sqlite = sqlite_core.init(PASTA)
+# ################################ #
+#      Initializing Essencial      #
+#             Modules              #
+# ################################ # 
+
+
+
+FOLDER = os.path.dirname(os.path.abspath(__file__))
+
+imgReader = imareocr.init(FOLDER)
+sqlite = sqlite_core.init(FOLDER)
 
 tools_db = sqlite_core.init.tools(sqlite)
 mails_db = sqlite_core.init.mails(sqlite)
+
+
+app = Flask(__name__)
+
+logging.getLogger("eventlet").setLevel(logging.CRITICAL)
+logging.getLogger("engineio").setLevel(logging.CRITICAL)
+logging.getLogger("socketio").setLevel(logging.CRITICAL)
+
+Socket = SocketIO(
+    app, 
+    async_mode="eventlet",
+    logger=False,
+    engineio_logger=False
+)
+
+# ################################ #
+#          Setting Global          #
+#            Variables             #
+# ################################ # 
+
+
 
 lastImage = ""
 
@@ -35,34 +64,62 @@ meses = {
     "12": "dez"
 }
 
+
+
+# ################################ #
+#          Defining Main           #
+#              Routes              #
+# ################################ # 
+
+
+
 with app.app_context():
-    print("✅ Servidor iniciado com sucesso!")
+    print("Servidor iniciado com sucesso!")
     
 @app.route("/")
 def fallback():
     return render_template("mails/mails.html")
 
-@app.route("/tool-loans/")
-@app.route("/tool-loans/<subpath>")
+@app.route("/tools-loan/")
+@app.route("/tools-loan/<subpath>")
 def tool_loans(subpath = None):
     if subpath is None or subpath != "registers":
-        return render_template("tool-loans/check-out.html")
+        return render_template("tools-loan/check-out.html")
     else:  
-        return render_template("tool-loans/registers.html")
+        return render_template("tools-loan/registers.html")
 
 @app.route("/mails")
 def mails():
     return render_template("mails/mails.html")
 
-@app.route("/tool-loans/add-tool", methods=["POST"])
+@app.route("/user-ip", methods=["GET"])
+def getIp():
+    return jsonify({
+        "Message": request.remote_addr
+    }, 200)
+
+
+
+# ################################ #
+#          Routes to the           #
+#          Tools-loan Tab          #
+# ################################ # 
+
+
+
+@app.route("/tools-loan/add-tool", methods=["POST"])
 def add_tool():
     data = request.json
     
     if data == None:
-        return jsonify({"Message": "Error: Código invalido!"}, 404)
+        return jsonify({
+            "Message": "Error: Código invalido!"
+        }, 404)
 
     if not (item := tools_db.searchTools(data.get("code"))):
-        return jsonify({"Message": "Error: Código não encontrado!"}, 404)
+        return jsonify({
+            "Message": "Error: Código não encontrado!"
+        }, 404)
     
     if item[3].lower() == "disponivel":
         type = "saida"
@@ -95,20 +152,19 @@ def add_tool():
         "photo": photo
     }, 200)
 
-@app.route("/pictures/<path:filename>")
+@app.route("/tools-loan/pictures/<path:filename>")
 def picture(filename):
-    return send_from_directory(PASTA + r"\pictures", filename)
+    return send_from_directory(FOLDER + r"\pictures", filename)
 
-@app.route("/get-registers", methods=["GET"])
+@app.route("/tools-loan/get-registers", methods=["GET"])
 def get_registers():
-    print(f"{datetime.now()} | {request.remote_addr} Getting tools")
     
     return jsonify({
         "loaned_tools": tools_db.getAllLoanedItems(),
         "all_movements": tools_db.getAllMovements()
     }, 200)
     
-@app.route("/tool-loans/registers/missing", methods=["POST"])
+@app.route("/tools-loan/registers/missing", methods=["POST"])
 def missing():
     data = request.json
     if data:
@@ -118,29 +174,18 @@ def missing():
         "Message": "Ok"
     }, 200)
 
-@Socket.on("update_pictures")
-def update_pictures():
-    Socket.emit("update_pictures")
-    
-    
-    
-    
-
-@app.route("/user-ip", methods=["GET"])
-def getIp():
-    return jsonify({
-        "Message": request.remote_addr
-    }, 200)
 
 
+# ################################ #
+#          Routes to the           #
+#            mails Tab             # 
+# ################################ # 
 
 
 
 @app.route("/mails/get-mails", methods=["POST"])
 def get_mails():
     data = request.get_json()
-
-    print(f"{datetime.now()} | {request.remote_addr} Getting Mails - Data: {data[0], data[1]}")
 
     return jsonify({
         "mails": mails_db.getMails(data[0], data[1])
@@ -149,25 +194,44 @@ def get_mails():
     
 @app.route("/mails/upload_file", methods=["POST"])
 def upload_file():
-    if "file" not in request.files:
-        return jsonify({
-            "Message": "Error: Nenhum arquivo enviado!"
-        }, 400)
-    
-    file = request.files["file"]
-    
-    tmp_path = PASTA + r"\pictures\mails\temp_image.jpg"
-    
-    file.save(tmp_path)
+    try:
+        if "file" not in request.files:
+            return jsonify({
+                "Message": "Error: Nenhum arquivo enviado!"
+            }, 400)
         
-    print(f"{datetime.now()} | {request.remote_addr} file uploaded - '{tmp_path}'")
+        file = request.files["file"]
+        
+        tmp_path = FOLDER + r"\pictures\mails\temp_image.jpg"
+        
+        file.save(tmp_path)
+        
+        global lastImage
+
+        sqlite.log_edit(
+            entity="/mails/upload_file",
+            entity_id="File",
+            field=None,
+            old=lastImage,
+            new=tmp_path,
+            ip=request.remote_addr
+        )
+
+        lastImage = tmp_path
+        
+        texto_extraido = imgReader.extractText(tmp_path)
     
-    global lastImage
-    lastImage = tmp_path
-    
-    texto_extraido = imareocr.extractText(tmp_path)
-    
-    return jsonify(texto_extraido)
+        return jsonify(texto_extraido)
+    except Exception as e:
+        sqlite.log_edit(
+            entity="/mails/upload_file",
+            entity_id=None,
+            field="Error",
+            old=None,
+            new=e,
+            ip=request.remote_addr
+        )
+        return jsonify(":(")
     
 @app.route("/mails/update", methods=["POST"])
 def update():
@@ -220,6 +284,15 @@ def update():
 
             inserted.append(code)
 
+            sqlite.log_edit(
+                entity="/mails/update",
+                entity_id=code,
+                field="status",
+                old=None,
+                new="returned",
+                ip=request.remote_addr
+            )
+            
         return jsonify({
             "Message": "Devoluções registradas",
             "type": "returns"
@@ -253,6 +326,15 @@ def update():
 
     mails_db.updatePicture(user, date, pname, code, "shipped")
 
+    sqlite.log_edit(
+        entity="/mails/update",
+        entity_id=code,
+        field="status",
+        old=None,
+        new="shipped",
+        ip=request.remote_addr
+    )
+    
     return jsonify({
         "Message": "Entrega registrada",
         "PictureName": pname
@@ -276,16 +358,25 @@ def register():
                 "Message": "Essa correspondencia ja está cadastrada!"
             }, 409)
         else:
+            sqlite.log_edit(
+                entity="/mails/register",
+                entity_id=code,
+                field=None,
+                old=None,
+                new=None,
+                ip=request.remote_addr
+            )
+
             return jsonify({
                 "Message": "Registro efetuado com Sucesso!"
             }, 200)
     else:
         return jsonify({
             "Message": "Código de rastreio invalido!"
-        }, 422)
+        }, 409)
 
-@app.route("/mails/received", methods=["POST"])
-def received():
+@app.route("/mails/update-reception-received", methods=["POST"])
+def reception_received():
     data = request.get_json()
 
     code = data["code"]
@@ -297,6 +388,15 @@ def received():
         filteredMails = filteredMails[0]
         if (filteredMails[6] == None or filteredMails[7] == None):
             mails_db.updateReceiver(str(code), str(receiver), str(sender))
+
+            sqlite.log_edit(
+                entity="/mails/update-reception-received",
+                entity_id=code,
+                field=None,
+                old=receiver,
+                new=sender,
+                ip=request.remote_addr
+            )
             return jsonify({
                 "Message": "Status atualizado com sucesso!"
             }, 200)
@@ -305,11 +405,46 @@ def received():
                 "Message": "A correspondencia ja foi coletada!",
                 "Values": [f"Recebedor: {filteredMails[6].title()}" , f"Liberador: {filteredMails[7].title()}"]
             }, 409)
-        
     else:
         return jsonify({
             "Message": "Código de rastreio invalido!"
         }, 422)
+
+@app.route("/mails/change-fantasy-name", methods=["POST"])
+def change_fantasy():
+    data = request.get_json()
+
+    code = data.get("code")
+    new_value = data.get("new_value")
+
+    old_mail = mails_db.getMails(code, "id")
+    mails_db.updateFantasy(str(code), str(new_value))
+
+    sqlite.log_edit(
+        entity="/mails/change-fantasy-name",
+        entity_id=code,
+        field="fantasy",
+        old=old_mail[0][3],
+        new=new_value,
+        ip=request.remote_addr
+    )
+
+    return jsonify({
+        "Message": "Nome atualizado com sucesso!"
+    }, 200)
+
+
+# ################################ #
+#             SocketIO             #
+#              Repass              #
+# ################################ # 
+
+
+
+@Socket.on("update_pictures")
+def update_pictures():
+    Socket.emit("update_pictures")
+
 
 
 

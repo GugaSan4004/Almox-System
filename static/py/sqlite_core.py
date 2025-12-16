@@ -6,6 +6,17 @@ class init:
     def __init__(self, folder) -> None:
         self.conector = sqlite3.connect(folder + r"\almoxarifado.sqlite", check_same_thread=False)
 
+    def log_edit(self, entity, entity_id, field, old, new, ip=None):
+        cur = self.conector.cursor()
+        cur.execute("""
+            INSERT INTO edit_logs
+            (entity, entity_id, field, old_value, new_value, ip)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (str(entity), str(entity_id), str(field), str(old), str(new), str(ip))
+        )
+        self.conector.commit()
+        cur.close()
+
     class mails:
         def __init__(self, parent: "init") -> None:
             self.connection = parent.conector
@@ -31,6 +42,19 @@ class init:
                 cur.execute(
                     "UPDATE mails SET ReceivedOnReceptionBy = ?, SendedOnReceptionBy = ?, status = 'almox' WHERE code = ?",
                     (receiver, sender, code.upper())
+                )
+                self.connection.commit()
+            except Exception as e:
+                print(e)
+            
+            cur.close()
+
+        def updateFantasy(self, code, value):
+            cur = self.connection.cursor()
+            try:
+                cur.execute(
+                    "UPDATE mails SET fantasy = ? WHERE code = ?",
+                    (value, code.upper())
                 )
                 self.connection.commit()
             except Exception as e:
