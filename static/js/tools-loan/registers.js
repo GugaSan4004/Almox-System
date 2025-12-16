@@ -72,7 +72,7 @@ function updateGrid(data) {
             ]
 
             tool_container.innerHTML += `
-            <img class="svg" src="/static/imgs/tool-loans/${tool.toLowerCase()
+            <img class="svg" src="/static/imgs/tools-loan/${tool.toLowerCase()
                     .replace(/[ãáàâäéèêëíìîïóòôöúùûüçñ'"º ª]/g, char => dictionary[char] || '-')
                     .replace(/^-+|-+$/g, '')
             }.png" alt="Imagem de: ${tool}">
@@ -90,7 +90,7 @@ function updateGrid(data) {
             tool_container.addEventListener("click", function (event) {
                 if (event.target.classList.contains("green")) {
                     document.getElementById(`${String(event.target.id).replaceAll(" ", "-").toLowerCase()}-traffic`).remove()
-                    fetch("/tool-loans/add-tool", {
+                    fetch("/tools-loan/add-tool", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ code: event.target.id.toLowerCase() })
@@ -98,7 +98,7 @@ function updateGrid(data) {
                         load()
                     })
                 } else if (event.target.classList.contains("yellow")) {
-                    fetch("/tool-loans/registers/missing", {
+                    fetch("/tools-loan/registers/missing", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ code: event.target.id.toLowerCase() })

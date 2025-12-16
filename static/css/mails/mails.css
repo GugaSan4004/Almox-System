@@ -399,8 +399,7 @@ select {
 
 .sc-body h1 {
     grid-row: 3;
-    grid-column: 2;
-    margin-top: 5vh;
+    grid-column: 1 / span 4;
 }
 
 #user_input {

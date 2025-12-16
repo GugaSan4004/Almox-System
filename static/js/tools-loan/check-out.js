@@ -1,6 +1,7 @@
 socket = io();
 
 window.onload = function () {
+
     document.addEventListener("click", function () {
         document.getElementById("code-input").focus();
     });
@@ -53,7 +54,7 @@ window.onload = function () {
                         svg.alt = `${data.item[2]}`;
                         svg.classList.add("icon");
 
-                        img.src = `/tools-loan/pictures/loans/${data.movement[4]}/${data.movement[3]}/${String(data.movement[0]).padStart(6, '0')}.jpg`;
+                        img.src = `/pictures/loans/${data.movement[4]}/${data.movement[3]}/${String(data.movement[0]).padStart(6, '0')}.jpg`;
                         img.alt = `${data.item[2]}`;
                         img.classList.add("picture");
 

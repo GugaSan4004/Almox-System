@@ -81,7 +81,7 @@ function getCorrespondences(filter, orderBy) {
                         td.classList.add("picture_link");
                         
                         td.textContent = correpondence[1];
-                        td.dataset.img = data[1][12] ? `/tools-loan/pictures/mails/${data[1][12]}.jpg` : "";
+                        td.dataset.img = data[1][12] ? `/pictures/mails/${data[1][12]}.jpg` : "";
                         
                         if (data[1][8] == "on_reception") {
                             td.classList.add("on_reception")
@@ -98,14 +98,19 @@ function getCorrespondences(filter, orderBy) {
                                 window.open(td.dataset.img, "_blank");
                             })
 
-                            td.addEventListener("mouseover", function() {
-                                if (preview.src !== td.dataset.img) {
-                                    preview.src = td.dataset.img;
-                                    preview.style.display = "block";
-                                }
+                            let hoverTimeout = null;
+
+                            td.addEventListener("mouseover", function () {
+                                hoverTimeout = setTimeout(() => {
+                                    if (preview.src !== td.dataset.img) {
+                                        preview.src = td.dataset.img;
+                                        preview.style.display = "block";
+                                    }
+                                }, 150);
                             });
 
-                            td.addEventListener("mouseout", function() {
+                            td.addEventListener("mouseout", function () {
+                                clearTimeout(hoverTimeout);
                                 preview.style.display = "none";
                             });
 
@@ -121,6 +126,17 @@ function getCorrespondences(filter, orderBy) {
                         field.classList.add("fantasy_name")
                         field.id = data[1][2]
 
+                        if (data[1][8] == "on_reception") {
+                            field.classList.add("on_reception")
+                        } else if (data[1][8] == "returned") {
+                            field.classList.add("returned")
+                        }
+                        
+                        let old_value = ""
+                        field.addEventListener("focus", () => {
+                            old_value = field.value
+                        })
+
                         field.addEventListener("keydown", function(e) {
                             if(e.key === 'Enter') {
                                 fetch("/mails/change-fantasy-name", {
@@ -130,11 +146,15 @@ function getCorrespondences(filter, orderBy) {
                                     },
                                     body: JSON.stringify({
                                         code: field.id,
-                                        new_value: field.value
+                                        new_value: field.value,
+                                        old_value: old_value
                                     })
                                 })
 
                                 field.blur(); 
+                            } else if(e.key === "Escape") {
+                                field.value = old_value;
+                                field.blur();
                             }
                         })
 
@@ -204,13 +224,13 @@ function updateReceiver() {
         const regexData = /DATA:\s*([0-9Iil\/]{6,12})/i;
         const dataMatch = json.match(regexData);
 
-        const returnDetected = json.replaceAll(" ", "").toUpperCase().includes("DEVOLUCAO") ||
-            json.replaceAll(" ", "").toUpperCase().includes("DEVOLUÇÃO")
+        const returnDetected = json.replaceAll(" ", "").toUpperCase().includes("DEVOLUCAOAOSCORREIOS") ||
+            json.replaceAll(" ", "").toUpperCase().includes("DEVOLUÇÃOAOSCORREIOS")
 
         let ARCodes, reasons, result
 
         if(returnDetected) {
-            const regexAllCodes = /[A-Z]{2}\d{9}[A-Z]{2}/g;
+            const regexAllCodes = /[A-Z]{2}\s*\d{3}\s*\d{3}\s*\d{3}\s*[A-Z]{2}/g;
             ARCodes = text.match(regexAllCodes) || [];
 
             const regexReasons = /DESCONHECIDO|MUDOU[- ]SE|RECUSADO\s*POR\s*:\s*[A-Z ]+/g;
@@ -223,6 +243,14 @@ function updateReceiver() {
                 motivo: reasons[index] || "MOTIVO NÃO IDENTIFICADO"
             }));
         }
+
+        
+        console.log(json
+            .replace(/\r/g, "")
+            .replace(/\n+/g, "\n")
+            .replace(/\s+/g, " ")
+            .toUpperCase())
+        console.log(ARCodes, reasons, result)
 
 
 
@@ -299,7 +327,7 @@ function updateReceiver() {
                 const ar_input = document.createElement("input");
                 const reason_input = document.createElement("input");
 
-                ar_input.value = item.code;
+                ar_input.value = item.code.replaceAll(" ", "");
                 reason_input.value = item.motivo;
                 
                 reason_input.id = item.code;
@@ -394,6 +422,7 @@ function updateReceiver() {
                         getCorrespondences(data[0].PictureName)
 
                         setTimeout(() => document.querySelectorAll(".db-container-values td").forEach(b => b.classList.add("highlight")), 100)
+                        setTimeout(() => document.querySelectorAll(".db-container-values input").forEach(b => b.classList.add("highlight")), 100)
                     
                         container.innerHTML = `        
                             <div id="to_almox_button" class="to_almox">
@@ -437,11 +466,26 @@ function updateReceiver() {
                     let errorMsg = document.getElementById("error_message")
 
                     if (errorMsg) {
-                        errorMsg.innerText = data[0].Error
+                        errorMsg.innerText = data[0].Message
                     } else {
                         const h1 = document.createElement("h1")
                         h1.id = "error_message"
-                        h1.innerHTML = data[0].Error
+                        h1.innerHTML = data[0].Message
+                        body.appendChild(h1)
+                    }
+                } else {
+                    document.querySelectorAll(".sc-body input").forEach(i => {
+                        i.classList.add("not_found")
+                    })
+
+                    let errorMsg = document.getElementById("error_message")
+
+                    if (errorMsg) {
+                        errorMsg.innerText = data[0].Message
+                    } else {
+                        const h1 = document.createElement("h1")
+                        h1.id = "error_message"
+                        h1.innerHTML = data[0].Message
                         body.appendChild(h1)
                     }
                 }
@@ -468,7 +512,7 @@ function focuses(container) {
         })
         .then(response => response.json())
         .then(data => {
-            if(["192.168.7.20", "192.168.7.0", "127.0.0.1"].includes(data[0].Message) && !document.getElementById("to_almox_button")) {
+            if(!["192.168.7.119"].includes(data[0].Message) && !document.getElementById("to_almox_button")) {
                 document.getElementById(container).insertAdjacentHTML('afterbegin', `
                 <div id="to_almox_button" class="to_almox">
                     <label for="to_almox">Para o Almoxarifado</label>
@@ -609,7 +653,7 @@ document.addEventListener("keydown", function (event) {
         event.preventDefault();
     }
 
-    if ((event.target.id == "code_input" || event.target.id == "ar_code" || event.target.id == "mail_code") && "not_found" == event.target.classList[0]) {
+    if ((event.target.id == "code_input" || event.target.id == "ar_code" || event.target.id == "mail_code" || event.target.id == "data_input" || event.target.id == "user_input") && "not_found" == event.target.classList[0]) {
         event.target.classList.remove("not_found")
         
         if (actual_focus === "ship-container") {
@@ -696,38 +740,38 @@ document.addEventListener("keydown", function (event) {
                 document.getElementById(inputs[currentIndex]).focus()
             , 200)
         }
-    } else if ((event.key === 'Enter' || event.key === "Tab") && actual_focus === "ship-container") {
-        const inputs = ["mail_code", "receiver_name", "sender_name", "reception-submit"];
+    } else if ((event.key === 'Enter') && actual_focus === "ship-container") {
+        // const inputs = ["mail_code", "receiver_name", "sender_name", "reception-submit"];
 
-        const activeElement = document.activeElement;
-        const currentIndex = inputs.indexOf(activeElement.id);
+        // const activeElement = document.activeElement;
+        // const currentIndex = inputs.indexOf(activeElement.id);
 
-        const nextIndex = (currentIndex + 1) % inputs.length;
-        const prevIndex = (currentIndex - 1 + inputs.length) % inputs.length;
+        // const nextIndex = (currentIndex + 1) % inputs.length;
+        // const prevIndex = (currentIndex - 1 + inputs.length) % inputs.length;
 
-        if (event.shiftKey) {
-            const target = document.getElementById(inputs[prevIndex]);
-            if (prevIndex <= 0) {
-                target && target.select();
-            } else if (prevIndex === 1 || prevIndex === 2) {
-                openSelect(target);
-            } else {
-                target && target.focus();
-            }
-            return;
-        }
+        // if (event.shiftKey) {
+        //     const target = document.getElementById(inputs[prevIndex]);
+        //     if (prevIndex <= 0) {
+        //         target && target.select();
+        //     } else if (prevIndex === 1 || prevIndex === 2) {
+        //         openSelect(target);
+        //     } else {
+        //         target && target.focus();
+        //     }
+        //     return;
+        // }
 
-        const target = document.getElementById(inputs[nextIndex]);
-        if (nextIndex === 0) {
-            target && target.select();
-        } else if (nextIndex === 2 || nextIndex === 1) {
-            openSelect(target);
-        } else {
-            target && target.focus();
-        }
+        // const target = document.getElementById(inputs[nextIndex]);
+        // if (nextIndex === 0) {
+        //     target && target.select();
+        // } else if (nextIndex === 2 || nextIndex === 1) {
+        //     openSelect(target);
+        // } else {
+        //     target && target.focus();
+        // }
 
-        if (currentIndex == 3 && event.key === 'Enter') {
-            document.getElementById(inputs[currentIndex])?.click();
-        }
+        // if (currentIndex == 3 && event.key === 'Enter') {
+            document.getElementById('reception-submit')?.click();
+        // }
     }
 });

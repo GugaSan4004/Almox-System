@@ -1,3 +1,4 @@
+import re
 import sqlite3
 
 from datetime import datetime
@@ -29,7 +30,7 @@ class init:
                 cur = self.connection.cursor()
                 cur.execute(
                     "UPDATE mails SET receive_name = ?, receive_date = ?, photo_id = ?, status = ? WHERE code = ?",
-                    (receive_name, receive_date, photo_id, status, code.upper())
+                    (receive_name.title(), receive_date, photo_id, status, code.upper())
                 )
                 self.connection.commit()
             except Exception as e:
@@ -49,12 +50,15 @@ class init:
             
             cur.close()
 
-        def updateFantasy(self, code, value):
+        def updateFantasy(self, code, fantasy):
             cur = self.connection.cursor()
             try:
                 cur.execute(
                     "UPDATE mails SET fantasy = ? WHERE code = ?",
-                    (value, code.upper())
+                    (
+                    fantasy.title(),
+                    code.upper()
+                    )
                 )
                 self.connection.commit()
             except Exception as e:
@@ -71,7 +75,11 @@ class init:
                 """, (
                         name.title(), 
                         code.upper(), 
-                        fantasy.title(), 
+                        re.sub(
+                            r'^([a-zA-Z]{2})(.*)',
+                            lambda m: m.group(1).upper() + m.group(2).lower(),
+                            fantasy
+                        ),
                         type_.title(), 
                         priority.title(),
                         status,

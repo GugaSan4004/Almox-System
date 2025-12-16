@@ -1,9 +1,7 @@
-import os
 import re
 import shutil
-import logging
+import webbrowser
 
-from datetime import datetime
 from flask_socketio import SocketIO
 from static.py.cam_service import camera
 from static.py import imareocr, sqlite_core
@@ -18,7 +16,7 @@ from flask import Flask, request, jsonify, render_template, send_from_directory
 
 
 
-FOLDER = os.path.dirname(os.path.abspath(__file__))
+FOLDER = r"\\192.168.7.252\dados\OPERACOES\13-ALMOXARIFADO\0 - Sistema Almox"
 
 imgReader = imareocr.init(FOLDER)
 sqlite = sqlite_core.init(FOLDER)
@@ -29,15 +27,9 @@ mails_db = sqlite_core.init.mails(sqlite)
 
 app = Flask(__name__)
 
-logging.getLogger("eventlet").setLevel(logging.CRITICAL)
-logging.getLogger("engineio").setLevel(logging.CRITICAL)
-logging.getLogger("socketio").setLevel(logging.CRITICAL)
-
 Socket = SocketIO(
     app, 
-    async_mode="eventlet",
-    logger=False,
-    engineio_logger=False
+    async_mode="eventlet"
 )
 
 # ################################ #
@@ -75,7 +67,8 @@ meses = {
 
 with app.app_context():
     print("Servidor iniciado com sucesso!")
-    
+    webbrowser.open("http://192.168.7.20")
+
 @app.route("/")
 def fallback():
     return render_template("mails/mails.html")
@@ -98,7 +91,9 @@ def getIp():
         "Message": request.remote_addr
     }, 200)
 
-
+@app.route("/pictures/<path:filename>")
+def picture(filename):
+    return send_from_directory(FOLDER + r"\pictures", filename)
 
 # ################################ #
 #          Routes to the           #
@@ -151,10 +146,6 @@ def add_tool():
         "movement": movement,
         "photo": photo
     }, 200)
-
-@app.route("/tools-loan/pictures/<path:filename>")
-def picture(filename):
-    return send_from_directory(FOLDER + r"\pictures", filename)
 
 @app.route("/tools-loan/get-registers", methods=["GET"])
 def get_registers():
@@ -270,7 +261,7 @@ def update():
                 str(infos[0])
             )
 
-            dest_path = f"pictures/mails/{pname}.jpg"
+            dest_path = FOLDER + r"\pictures\mails\\" + pname + ".jpg"
 
             shutil.copy(lastImage, dest_path)
             
@@ -321,7 +312,8 @@ def update():
         str(infos[0])
     )
 
-    dest_path = f"pictures/mails/{pname}.jpg"
+    dest_path = FOLDER + r"\pictures\mails\\" + pname + ".jpg"
+    
     shutil.move(lastImage, dest_path)
 
     mails_db.updatePicture(user, date, pname, code, "shipped")
@@ -385,26 +377,31 @@ def reception_received():
     
     if re.match(r'^[A-Za-z]{2}\d{9}BR$', str(code).upper()):
         filteredMails = mails_db.getMails(str(code), 'id')
-        filteredMails = filteredMails[0]
-        if (filteredMails[6] == None or filteredMails[7] == None):
-            mails_db.updateReceiver(str(code), str(receiver), str(sender))
+        if filteredMails:
+            filteredMails = filteredMails[0]
+            if (filteredMails[6] == None or filteredMails[7] == None):
+                mails_db.updateReceiver(str(code), str(receiver), str(sender))
 
-            sqlite.log_edit(
-                entity="/mails/update-reception-received",
-                entity_id=code,
-                field=None,
-                old=receiver,
-                new=sender,
-                ip=request.remote_addr
-            )
-            return jsonify({
-                "Message": "Status atualizado com sucesso!"
-            }, 200)
+                sqlite.log_edit(
+                    entity="/mails/update-reception-received",
+                    entity_id=code,
+                    field=None,
+                    old=receiver,
+                    new=sender,
+                    ip=request.remote_addr
+                )
+                return jsonify({
+                    "Message": "Status atualizado com sucesso!"
+                }, 200)
+            else:
+                return jsonify({
+                    "Message": "A correspondencia ja foi coletada!",
+                    "Values": [f"Recebedor: {filteredMails[6].title()}" , f"Liberador: {filteredMails[7].title()}"]
+                }, 409)
         else:
             return jsonify({
-                "Message": "A correspondencia ja foi coletada!",
-                "Values": [f"Recebedor: {filteredMails[6].title()}" , f"Liberador: {filteredMails[7].title()}"]
-            }, 409)
+                "Message": "Correspondencia não encontrada!"
+            }, 404)
     else:
         return jsonify({
             "Message": "Código de rastreio invalido!"
@@ -416,15 +413,15 @@ def change_fantasy():
 
     code = data.get("code")
     new_value = data.get("new_value")
+    old_value = data.get("old_value")
 
-    old_mail = mails_db.getMails(code, "id")
     mails_db.updateFantasy(str(code), str(new_value))
 
     sqlite.log_edit(
         entity="/mails/change-fantasy-name",
         entity_id=code,
         field="fantasy",
-        old=old_mail[0][3],
+        old=old_value,
         new=new_value,
         ip=request.remote_addr
     )
