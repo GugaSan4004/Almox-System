@@ -200,6 +200,10 @@ select {
     margin-top: 1vh;
 }
 
+.db-container-values td {
+    align-content: end;
+}
+
 
 .db-container-title b {
     cursor: pointer;
@@ -387,7 +391,7 @@ select {
 
 .highlight {
     margin-top: 20vh;
-    color: yellow;
+    color: greenyellow;
 }
 
 .not_found {

@@ -13,14 +13,14 @@ class CameraWorker(threading.Thread):
         self.running = True
     
     def run(self):
-        print("Iniciando câmera...")
+        print("> Initializing camera...")
         cam = cv2.VideoCapture(0)
 
         for _ in range(10):
             cam.read()
             time.sleep(0.1)
 
-        print("Câmera pronta!")
+        print("> The camera is ready!")
 
         while self.running:
             try:

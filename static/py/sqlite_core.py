@@ -1,4 +1,3 @@
-import re
 import sqlite3
 
 from datetime import datetime
@@ -6,14 +5,14 @@ from datetime import datetime
 class init:
     def __init__(self, folder) -> None:
         self.conector = sqlite3.connect(folder + r"\almoxarifado.sqlite", check_same_thread=False)
-
-    def log_edit(self, entity, entity_id, field, old, new, ip=None):
+    
+    def log_edit(self, route, method, id, code, message, fields_changed, values, ip):
         cur = self.conector.cursor()
         cur.execute("""
             INSERT INTO edit_logs
-            (entity, entity_id, field, old_value, new_value, ip)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (str(entity), str(entity_id), str(field), str(old), str(new), str(ip))
+            (route, method, value_id, code, message, fields_changed, list_values, ip)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (str(route), str(method), str(id), str(code), str(message), str(fields_changed), str(values), str(ip))
         )
         self.conector.commit()
         cur.close()
@@ -42,7 +41,7 @@ class init:
             try:
                 cur.execute(
                     "UPDATE mails SET ReceivedOnReceptionBy = ?, SendedOnReceptionBy = ?, LeaveReceptionAt = ?, status = 'almox' WHERE code = ?",
-                    (receiver, sender, str(datetime.now().strftime("%d-%m-%Y")), code.upper())
+                    (receiver, sender, str(datetime.now().strftime("%d-%m-%Y %H:%M")), code.upper())
                 )
                 self.connection.commit()
             except Exception as e:
@@ -75,11 +74,7 @@ class init:
                 """, (
                         name.title(), 
                         code.upper(), 
-                        re.sub(
-                            r'^([a-zA-Z]{2})(.*)',
-                            lambda m: m.group(1).upper() + m.group(2).lower(),
-                            fantasy
-                        ),
+                        fantasy.title(),
                         type_.title(), 
                         priority.title(),
                         status,
@@ -102,7 +97,7 @@ class init:
                     self.direction_orderBy = "DESC"
                     
                 cur.execute(
-                    f"SELECT * FROM mails WHERE code LIKE ? OR name LIKE ? OR fantasy LIKE ? OR photo_id LIKE ? ORDER BY {orderBy}  {self.direction_orderBy}",
+                    f"SELECT * FROM mails WHERE code LIKE ? OR name LIKE ? OR fantasy LIKE ? OR photo_id LIKE ? ORDER BY {orderBy} {self.direction_orderBy}",
                     (
                         "%" + filter + "%", 
                         "%" + filter + "%", 
@@ -200,3 +195,44 @@ class init:
             
             cur.close()
             return results
+    
+    class vision:
+        def __init__(self, parent: "init") -> None:
+            self.connection = parent.conector
+        
+        def getUsage(self):
+            cur = self.connection.cursor()
+            cur.execute("SELECT baseline, baseline_date FROM vision_usage WHERE id = 1")
+            row = cur.fetchone()
+            
+            cur.close()
+            
+            
+            if not row:
+                return None, None
+            
+            baseline, baseline_date = row
+            return baseline, baseline_date
+        
+        def setUsage(self, value):
+            cur = self.connection.cursor()
+            
+            cur.execute("""
+                UPDATE vision_usage
+                SET baseline = ?, baseline_date = ?
+                WHERE id = 1
+            """, (value, datetime.now().date().isoformat()))
+            
+            self.connection.commit()
+            cur.close()
+        
+        def clearUsage(self):
+            cur = self.connection.cursor()
+            cur.execute("""
+                UPDATE vision_usage
+                SET baseline = NULL, baseline_date = NULL
+                WHERE id = 1
+            """)
+            
+            self.connection.commit()
+            cur.close()

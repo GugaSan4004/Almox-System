@@ -2,9 +2,9 @@
 
 
 
-UPDATE sqlite_sequence SET seq = 36;
+UPDATE sqlite_sequence SET seq = 46;
 
-DELETE FROM mails WHERE id = 37;
+DELETE FROM mails WHERE id = 47;
 
 INSERT INTO mails (name, code, fantasy, type, priority, join_date) VALUES
 ("teste 001", "1", NULL, "caixa", "judicial", "2025-12-09"),

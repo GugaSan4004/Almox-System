@@ -1,8 +1,10 @@
 import re
 import shutil
+import datetime
 import webbrowser
 
 from flask_socketio import SocketIO
+from static.py.screen import screen
 from static.py.cam_service import camera
 from static.py import imareocr, sqlite_core
 from flask import Flask, request, jsonify, render_template, send_from_directory
@@ -16,21 +18,26 @@ from flask import Flask, request, jsonify, render_template, send_from_directory
 
 
 
-# FOLDER = r"\\192.168.7.252\dados\OPERACOES\13-ALMOXARIFADO\0 - Sistema Almox"
-FOLDER = r"C:\Users\GUGA4\Documents\8 - Sistema Almox"
+FOLDER = r"\\192.168.7.252\dados\OPERACOES\13-ALMOXARIFADO\0 - Sistema Almox"
+# FOLDER = r"C:\Users\GUGA4\Documents\8 - Sistema Almox"
 
-imgReader = imareocr.init(FOLDER)
 sqlite = sqlite_core.init(FOLDER)
 
 tools_db = sqlite_core.init.tools(sqlite)
 mails_db = sqlite_core.init.mails(sqlite)
+vision_db = sqlite_core.init.vision(sqlite)
+
+imgReader = imareocr.init(FOLDER, vision_db)
 
 
 app = Flask(__name__)
 
 Socket = SocketIO(
-    app, 
-    async_mode="eventlet"
+    app,
+    async_mode="eventlet",
+    ping_interval=25,
+    ping_timeout=60,
+    cors_allowed_origins="*"
 )
 
 # ################################ #
@@ -67,8 +74,8 @@ meses = {
 
 
 with app.app_context():
-    print("Servidor iniciado com sucesso!")
-    webbrowser.open("http://192.168.7.20")
+    print("> Server initiated successfully!")
+    webbrowser.open("http://192.168.7.20/tools-loan")
 
 @app.route("/")
 def fallback():
@@ -110,11 +117,31 @@ def add_tool():
     data = request.json
     
     if data == None:
+        sqlite.log_edit(
+            route="/tools-loan/add-tool",
+            method="[POST]",
+            id=None,
+            code=400,
+            message="Invalid Code",
+            fields_changed=None,
+            values=data,
+            ip=request.remote_addr
+        )
         return jsonify({
-            "Message": "Error: Código invalido!"
-        }, 404)
+            "Message": "Error: Nenhum valor foi passado!"
+        }, 400)
 
     if not (item := tools_db.searchTools(data.get("code"))):
+        sqlite.log_edit(
+            route="/tools-loan/add-tool",
+            method="[POST]",
+            id=None,
+            code=404,
+            message="Code not found",
+            fields_changed=None,
+            values=data,
+            ip=request.remote_addr
+        )
         return jsonify({
             "Message": "Error: Código não encontrado!"
         }, 404)
@@ -129,26 +156,53 @@ def add_tool():
     movements_count = tools_db.getMovementsCount()
     
     photo = camera.capture(str(movements_count).zfill(6))
-    
-    tools_db.updateTools(item[0], "status", status)
-    
-    movement = tools_db.addMovement(
-        movements_count, 
-        item[0], 
-        photo["day"], 
-        photo["month"], 
-        photo["year"], 
-        photo["time"], 
-        type
-    )
-    
-    tools_db.updateTools(item[0], "id_movements", movement[0])
-
-    return jsonify({
-        "item": item, 
-        "movement": movement,
-        "photo": photo
-    }, 200)
+        
+    try:
+        tools_db.updateTools(item[0], "status", status)
+        
+        movement = tools_db.addMovement(
+            movements_count, 
+            item[0], 
+            photo["day"], 
+            photo["month"], 
+            photo["year"], 
+            photo["time"], 
+            type
+        )
+        
+        tools_db.updateTools(item[0], "id_movements", movement[0])
+    except Exception as e:
+        sqlite.log_edit(
+            route="/tools-loan/add-tool",
+            method="[POST]",
+            id=item[0],
+            code=500,
+            message=e,
+            fields_changed=None,
+            values=data,
+            ip=request.remote_addr
+        )
+        
+        return jsonify({
+            "Message": "Erro inesperado!"
+        }, 500)
+    else:
+        sqlite.log_edit(
+            route="/tools-loan/add-tool",
+            method="[POST]",
+            id=item[0],
+            code=200,
+            message="OK",
+            fields_changed='{"tools": "status", "tools_movements": "new", "tools": "id_movements"}',
+            values='{"status": "' + status + '", "new": "' + str(movement[0]) + '", "id_movements": "' + str(movement[0]) + '"}',
+            ip=request.remote_addr
+        )
+        
+        return jsonify({
+            "item": item, 
+            "movement": movement,
+            "photo": photo
+        }, 200)
 
 @app.route("/tools-loan/get-registers", methods=["GET"])
 def get_registers():
@@ -161,12 +215,36 @@ def get_registers():
 @app.route("/tools-loan/registers/missing", methods=["POST"])
 def missing():
     data = request.json
+    
     if data:
         tools_db.setToolMissing(data.get("code"))
-            
-    return jsonify({
-        "Message": "Ok"
-    }, 200)
+        sqlite.log_edit(
+            route="/tools-loan/registers/missing",
+            method="[POST]",
+            id=None,
+            code=200,
+            message="OK",
+            fields_changed='{"tools": "id_movements"}',
+            values='{"id_movements": "NULL"}',
+            ip=request.remote_addr
+        )
+        return jsonify({
+            "Message": "Ok"
+        }, 200)
+    else:
+        sqlite.log_edit(
+            route="/tools-loan/registers/missing",
+            method="[POST]",
+            id=None,
+            code=400,
+            message="Invalid Values",
+            fields_changed=None,
+            values=None,
+            ip=request.remote_addr
+        )
+        return jsonify({
+            "Message": "Valores invalidos!"
+        }, 400)
 
 
 
@@ -190,6 +268,16 @@ def get_mails():
 def upload_file():
     try:
         if "file" not in request.files:
+            sqlite.log_edit(
+                route="/mails/upload_file",
+                method="[POST]",
+                id=None,
+                code=400,
+                message="Invalid Values",
+                fields_changed=None,
+                values=None,
+                ip=request.remote_addr
+            )
             return jsonify({
                 "Message": "Error: Nenhum arquivo enviado!"
             }, 400)
@@ -202,30 +290,36 @@ def upload_file():
         
         global lastImage
 
-        sqlite.log_edit(
-            entity="/mails/upload_file",
-            entity_id="File",
-            field=None,
-            old=lastImage,
-            new=tmp_path,
-            ip=request.remote_addr
-        )
-
         lastImage = tmp_path
         
-        texto_extraido = imgReader.extractText(tmp_path)
-    
-        return jsonify(texto_extraido)
-    except Exception as e:
+        extracted_text = imgReader.extractText(tmp_path)
+
+
         sqlite.log_edit(
-            entity="/mails/upload_file",
-            entity_id=None,
-            field="Error",
-            old=None,
-            new=e,
+            route="/mails/upload_file",
+            method="[POST]",
+            id=None,
+            code=200,
+            message="OK",
+            fields_changed='{"global": "lastImage"}',
+            values='{"lastImage": "' + lastImage + '", "extracted_text": "' + extracted_text + '"}',
             ip=request.remote_addr
         )
-        return jsonify(":(")
+        
+        return jsonify(extracted_text)
+    
+    except Exception as e:
+        sqlite.log_edit(
+            route="/mails/upload_file",
+            method="[POST]",
+            id=None,
+            code=500,
+            message=e,
+            fields_changed=None,
+            values=None,
+            ip=request.remote_addr
+        )
+        return jsonify(":("), 500
     
 @app.route("/mails/update", methods=["POST"])
 def update():
@@ -233,11 +327,37 @@ def update():
 
     mail_type = data.get("type")
     date = data.get("date")
+    
+    if not date:
+        sqlite.log_edit(
+            route="/mails/update",
+            method="[POST]",
+            id=None,
+            code=400,
+            message="Invalid date Value",
+            fields_changed=None,
+            values=None,
+            ip=request.remote_addr
+        )
+        
+        return jsonify({
+            "Message": "data inválida"
+        }, 400)
 
     if mail_type == "return":
         items = data.get("items", [])
 
         if not items:
+            sqlite.log_edit(
+                route="/mails/update",
+                method="[POST]",
+                id=None,
+                code=400,
+                message="Invalid Values",
+                fields_changed=None,
+                values=None,
+                ip=request.remote_addr
+            )
             return jsonify({
                 "Message": "Nenhuma devolução informada"
             }, 400)
@@ -279,11 +399,13 @@ def update():
             inserted.append(code)
 
             sqlite.log_edit(
-                entity="/mails/update",
-                entity_id=code,
-                field="status",
-                old=None,
-                new="returned",
+                route="/mails/update",
+                method="[POST]",
+                id=item.get("code"),
+                code=200,
+                message="OK",
+                fields_changed='{"mails": ["receive_name", "receive_date", "photo_id", "status"]}',
+                values='{"receive_name": "' + motivo + '", "receive_date": "' + date + '", "photo_id": "' + pname + '", "status": "' + code + '"}',
                 ip=request.remote_addr
             )
             
@@ -295,17 +417,54 @@ def update():
     code = data.get("code")
     user = data.get("user")
 
-    if not code or not user:
+    if (not code or not re.match(r'^[A-Za-z]{2}\d{9}BR$', str(code).upper())) or not user:
+        sqlite.log_edit(
+            route="/mails/update",
+            method="[POST]",
+            id=None,
+            code=400,
+            message="Invalid Values",
+            fields_changed=None,
+            values=None,
+            ip=request.remote_addr
+        )
+        
         return jsonify({
-            "Message": "Dados inválidos"
+            "Message": "Codigo ou Recebedor invalido!"
         }, 400)
 
     infos = mails_db.getMails(code, "id")
-
+    
     if not infos:
+        sqlite.log_edit(
+            route="/mails/update",
+            method="[POST]",
+            id=None,
+            code=404,
+            message="Mail not found",
+            fields_changed=None,
+            values=None,
+            ip=request.remote_addr
+        )
+        
         return jsonify({
             "Message": "Correspondência não encontrada"
         }, 404)
+    elif infos[0][9].lower() == "shipped":
+        sqlite.log_edit(
+            route="/mails/update",
+            method="[POST]",
+            id=None,
+            code=409,
+            message="Mail already shipped",
+            fields_changed=None,
+            values=None,
+            ip=request.remote_addr
+        )
+        
+        return jsonify({
+            "Message": "Correspondência já consta como entregue!"
+        }, 409)
 
     infos = infos[0]
 
@@ -322,11 +481,13 @@ def update():
     mails_db.updatePicture(user, date, pname, code, "shipped")
 
     sqlite.log_edit(
-        entity="/mails/update",
-        entity_id=code,
-        field="status",
-        old=None,
-        new="shipped",
+        route="/mails/update",
+        method="[POST]",
+        id=code,
+        code=200,
+        message="OK",
+        fields_changed='{"mails": ["receive_name", "receive_date", "photo_id", "status"]}',
+        values='{"receive_name": "' + user + '", "receive_date": "' + date + '", "photo_id": "' + pname + '", "status": "' + code + '"}',
         ip=request.remote_addr
     )
     
@@ -349,26 +510,58 @@ def register():
     
     if re.match(r'^[A-Za-z]{2}\d{9}BR$', str(code).upper()):
         if ("unique constraint failed" in str(mails_db.register(str(name), str(code), str(fantasy), str(type_), str(priority), str(status))).lower()):
+            sqlite.log_edit(
+                route="/mails/register",
+                method="[POST]",
+                id=code,
+                code=409,
+                message="unique constraint failed",
+                fields_changed=None,
+                values=None,
+                ip=request.remote_addr
+            )
+
             return jsonify({
                 "Message": "Essa correspondencia ja está cadastrada!"
             }, 409)
         else:
             sqlite.log_edit(
-                entity="/mails/register",
-                entity_id=code,
-                field=None,
-                old=None,
-                new=None,
+                route="/mails/register",
+                method="[POST]",
+                id=code,
+                code=200,
+                message="OK",
+                fields_changed='{"mails": ["name", "code", "fantasy", "type", "priority", "status"]}',
+                values=(
+                    '{"name": "' + str(name) +
+                    '", "code": "' + str(code) +
+                    '", "fantasy": "' + str(fantasy) +
+                    '", "type": "' + str(type_) +
+                    '", "priority": "' + str(priority) +
+                    '", "status": "' + str(status) + '"}'
+                ),
                 ip=request.remote_addr
             )
+
 
             return jsonify({
                 "Message": "Registro efetuado com Sucesso!"
             }, 200)
     else:
+        sqlite.log_edit(
+            route="/mails/register",
+            method="[POST]",
+            id=code,
+            code=400,
+            message="Invalid Values",
+            fields_changed=None,
+            values=None,
+            ip=request.remote_addr
+        )
+        
         return jsonify({
             "Message": "Código de rastreio invalido!"
-        }, 409)
+        }, 400)
 
 @app.route("/mails/update-reception-received", methods=["POST"])
 def reception_received():
@@ -386,26 +579,67 @@ def reception_received():
                 mails_db.updateReceiver(str(code), str(receiver), str(sender))
 
                 sqlite.log_edit(
-                    entity="/mails/update-reception-received",
-                    entity_id=code,
-                    field=None,
-                    old=receiver,
-                    new=sender,
+                    route="/mails/update-reception-received",
+                    method="[POST]",
+                    id=code,
+                    code=200,
+                    message="OK",
+                    fields_changed='{"mails": ["ReceivedOnReceptionBy", "SendedOnReceptionBy", "LeaveReceptionAt", "status"]}',
+                    values=(
+                        '{"ReceivedOnReceptionBy": "' + str(receiver) +
+                        '", "SendedOnReceptionBy": "' + str(sender) +
+                        '", "LeaveReceptionAt": "' + datetime.datetime.now().strftime("%d-%m-%Y %H:%M") +
+                        '", "status": "almox"}'
+                    ),
                     ip=request.remote_addr
                 )
+
                 return jsonify({
                     "Message": "Status atualizado com sucesso!"
                 }, 200)
             else:
+                sqlite.log_edit(
+                    route="/mails/update-reception-received",
+                    method="[POST]",
+                    id=code,
+                    code=409,
+                    message="mail already shipped",
+                    fields_changed=None,
+                    values=None,
+                    ip=request.remote_addr
+                )
+                
                 return jsonify({
                     "Message": "A correspondencia ja foi coletada!",
                     "Values": [f"Recebedor: {filteredMails[6].title()}" , f"Liberador: {filteredMails[7].title()}", f"Data: {filteredMails[8]}"]
                 }, 409)
         else:
+            sqlite.log_edit(
+                route="/mails/update-reception-received",
+                method="[POST]",
+                id=code,
+                code=404,
+                message="mail not found",
+                fields_changed=None,
+                values=None,
+                ip=request.remote_addr
+            )
+            
             return jsonify({
                 "Message": "Correspondencia não encontrada!"
             }, 404)
     else:
+        sqlite.log_edit(
+            route="/mails/update-reception-received",
+            method="[POST]",
+            id=code,
+            code=422,
+            message="Invalid code format",
+            fields_changed=None,
+            values=None,
+            ip=request.remote_addr
+        )
+        
         return jsonify({
             "Message": "Código de rastreio invalido!"
         }, 422)
@@ -422,27 +656,33 @@ def update_column():
     try:
         mails_db.update(str(code), str(new_value), str(column))
 
-        sqlite.log_edit(
-            entity="/mails/change-column",
-            entity_id=code,
-            field=column,
-            old=old_value,
-            new=new_value,
-            ip=request.remote_addr
-        )
+
     except Exception as e:
         sqlite.log_edit(
-            entity=f"/mails/change-column -> Error: {e}",
-            entity_id=code,
-            field=column,
-            old=old_value,
-            new=new_value,
+            route="/mails/update-column",
+            method="[POST]",
+            id=code,
+            code=500,
+            message=e,
+            fields_changed=None,
+            values=None,
             ip=request.remote_addr
         )
         return jsonify({
             "Message": f"Erro não esperado!"
-        }, 400)
+        }, 500)
     else:
+        sqlite.log_edit(
+            route="/mails/update-column",
+            method="[POST]",
+            id=code,
+            code=200,
+            message="OK",
+            fields_changed='{"mails", "' + column +'"}',
+            values='{"' + column + '", "' + old_value + ' -> ' + new_value + '",}',
+            ip=request.remote_addr
+        )
+        
         return jsonify({
             "Message": "Nome atualizado com sucesso!"
         }, 200)
@@ -465,4 +705,9 @@ def update_pictures():
 
 
 if __name__ == "__main__":
-    Socket.run(app, host="0.0.0.0", port=80)
+    Socket.run(
+        app,
+        host="0.0.0.0",
+        port=80,
+        debug=False
+    )

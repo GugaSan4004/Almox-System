@@ -81,7 +81,7 @@ function getCorrespondences(filter, orderBy) {
                         td.classList.add("picture_link");
                         
                         td.textContent = correpondence[1];
-                        td.dataset.img = data[1][12] ? `/pictures/mails/${data[1][12]}.jpg` : "";
+                        td.dataset.img = data[1][13] ? `/pictures/mails/${data[1][13]}.jpg` : "";
                         
                         if (data[1][9] == "on_reception") {
                             td.classList.add("on_reception")
@@ -137,8 +137,9 @@ function getCorrespondences(filter, orderBy) {
                             old_value = field.value
                         })
 
-                        field.addEventListener("keydown", function(e) {
-                            if(e.key === 'Enter') {
+                        field.addEventListener("blur", function() {
+                            if(field.value == old_value) return
+                            else {
                                 fetch("/mails/update-column", {
                                     method: "POST",
                                     headers: {
@@ -151,7 +152,11 @@ function getCorrespondences(filter, orderBy) {
                                         old_value: old_value
                                     })
                                 })
+                            }
+                        })
 
+                        field.addEventListener("keydown", function(e) {
+                            if(e.key === 'Enter') {
                                 field.blur(); 
                             } else if(e.key === "Escape") {
                                 field.value = old_value;
@@ -414,14 +419,14 @@ function updateReceiver() {
 
                         setTimeout(() => document.querySelectorAll(".db-container-values td").forEach(b => b.classList.add("highlight")), 100)
                         setTimeout(() => document.querySelectorAll(".db-container-values input").forEach(b => b.classList.add("highlight")), 100)
-                    
+
                         container.innerHTML = `        
                             <div id="to_almox_button" class="to_almox">
                                 <label for="to_almox">Para o Almoxarifado</label>
                                 <input type="checkbox" id="to_almox" name="to_almox" value="to_almox" onchange="changeShipContainer(event)">
                             </div>
                                         
-                            <form class="ship-container ship-almox" id="ship-almox" style="display: none;">
+                            <form class="ship-container ship-almox" id="ship-almox" style="display: none">
                                 <h1 id="reception-insert-message">Preencha os campos abaixo!</h1>
 
                                 <input id="mail_code" name="code" type="text" placeholder="Codigo AR" required="">
@@ -451,7 +456,7 @@ function updateReceiver() {
                             </div>
                         `
                     }
-                } else if(data[1] == 404) {
+                } else if(data[1] == 404 || data[1] == 409) {
                     document.getElementById("code_input").classList.add("not_found")
 
                     let errorMsg = document.getElementById("error_message")
@@ -510,7 +515,12 @@ function focuses(container) {
                     <input type="checkbox" id="to_almox" name="to_almox" value="to_almox" onchange="changeShipContainer(event)">
                 </div>
             `)
+            } 
+            
+            if(["192.168.7.58"].includes(data[0].Message)) {
+                document.getElementById("to_almox").click()
             }
+
         })
 
         const img_container = document.getElementById("image-container")
@@ -568,8 +578,7 @@ function register() {
                 name.value = ""
                 fantasy.value = ""
                 break
-            case 404:
-            case 422:
+            case 400:
             case 409:
                 code.classList.add("not_found")
                 break
