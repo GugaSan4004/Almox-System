@@ -11,7 +11,7 @@ class ScreenWorker(threading.Thread):
         self.running = True
     
     def run(self):                    
-        print("> The screen is awais on!")
+        print("> The screen is always on!")
 
         while True:
             ctypes.windll.user32.keybd_event(0x7E, 0, 0, 0)

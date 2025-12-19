@@ -28,11 +28,12 @@
             <button id="data-base" onclick="focuses('db-container'); getCorrespondences()">Registros</button>
             <!-- <button id="reception" onclick="focuses('reception-container')">Saida da Recepção</button> -->
             <button id="shipment" onclick="focuses('ship-container')">Registrar Saida</button>
+            <button id="shipment" onclick="focuses('return-container')">Gerar Devoluções</button>
         </div>
-        
         <h1>
             Sistema de Correspondencias
         </h1>
+        
     </header>
 
     <main>
@@ -68,6 +69,7 @@
 
         <div class="container db-container" id="db-container" style="display: none;">
             <div class="caption">
+                <h1>🔴 Atrasada (+6 dias)</h1>
                 <h1>🟡 Na recepção</h1>
                 <h1>⚪ No almoxarifado / Entregue</h1>
                 <h1>⚫ Devolvido</h1>
@@ -79,7 +81,6 @@
         </div>
 
         <div class="container" id="ship-container" style="display: none;">
-
             <form class="ship-container ship-almox" id="ship-almox" style="display: none;">
                 <h1 id="reception-insert-message">Preencha os campos abaixo!</h1>
 
@@ -100,6 +101,7 @@
 
                 <button class="submit" onclick="receivedOnReception()" type="button" id="reception-submit">Enviar</button>
             </form>
+
             <div class="ship-container ship-mall" id="ship-mall">
                 <input type="file" id="file_input" style="display: none">
                 <div id="image-container" class="image-container">
@@ -108,6 +110,28 @@
                 <button class="submit" id="updateReceiver-button" onclick="updateReceiver()">Enviar</button>
             </div>
         </div>
+
+        <form id="return-container" class="container return-container" style="display: none;">
+            <div class="helpers">
+                <input id="return_input" type="search" placeholder="Nome ou Codigo da Correspondencia!">
+                <button id="generate_button" onclick="genReturn()" type="button">Gerar</button>
+            </div>
+            <div class="return-mails-container" id="return-mails-container">
+                <div class="return-mails-title">
+                    <b id="id">ID</b>
+                    <b id="name">Nome</b>
+                    <b id="code">Codigo AR</b>
+                    <b id="fantasy">Nome Fantasia</b>
+                    <b id="type">Tipo</b>
+                    <b id="priority">Prioridade</b>
+                    <b id="join_date">Data Entrada</b>
+                    <b id="receive_name">Motivo</b>
+                </div>
+                <div id="return-mails-values" class="return-mails-values">
+                    
+                </div>
+            </div>
+        </form>
     </div>
 </body>
 </html>

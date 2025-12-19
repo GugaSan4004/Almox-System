@@ -35,7 +35,7 @@ O Almox-System é uma aplicação web desenvolvida para gerenciar operações de
 
 1. **Clone o repositório**:
    ```bash
-   git clone https://github.com/seu-usuario/almox-system.git
+   git clone https://github.com/GugaSan4004/almox-system.git
    cd almox-system
    ```
 

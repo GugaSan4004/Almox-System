@@ -6,7 +6,7 @@ import webbrowser
 from flask_socketio import SocketIO
 from static.py.screen import screen
 from static.py.cam_service import camera
-from static.py import imareocr, sqlite_core
+from static.py import imareocr, sqlite_core, docgenerator
 from flask import Flask, request, jsonify, render_template, send_from_directory
 
 
@@ -18,8 +18,8 @@ from flask import Flask, request, jsonify, render_template, send_from_directory
 
 
 
-FOLDER = r"\\192.168.7.252\dados\OPERACOES\13-ALMOXARIFADO\0 - Sistema Almox"
-# FOLDER = r"C:\Users\GUGA4\Documents\8 - Sistema Almox"
+# FOLDER = r"\\192.168.7.252\dados\OPERACOES\13-ALMOXARIFADO\0 - Sistema Almox"
+FOLDER = r"C:\Users\GUGA4\Documents\Almox-system"
 
 sqlite = sqlite_core.init(FOLDER)
 
@@ -28,6 +28,7 @@ mails_db = sqlite_core.init.mails(sqlite)
 vision_db = sqlite_core.init.vision(sqlite)
 
 imgReader = imareocr.init(FOLDER, vision_db)
+docgen = docgenerator.init(FOLDER)
 
 
 app = Flask(__name__)
@@ -262,8 +263,7 @@ def get_mails():
     return jsonify({
         "mails": mails_db.getMails(data[0], data[1])
     }, 200)
-    
-    
+
 @app.route("/mails/upload_file", methods=["POST"])
 def upload_file():
     try:
@@ -495,7 +495,6 @@ def update():
         "Message": "Entrega registrada",
         "PictureName": pname
     }, 200)
-    
 
 @app.route("/mails/register", methods=["POST"])
 def register():
@@ -687,7 +686,17 @@ def update_column():
             "Message": "Nome atualizado com sucesso!"
         }, 200)
 
+@app.route("/mails/generate-return", methods=["POST"])
+def generate_return():
+    data = request.get_json()
 
+    file_path = docgen.generate_return(
+        data=data
+    )
+
+    return jsonify({
+        "Message": file_path
+    }, 200)
 
 
 # ################################ #

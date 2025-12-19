@@ -76,6 +76,9 @@ function getCorrespondences(filter, orderBy) {
         Object.entries(json[0].mails).forEach(data => {
             Object.entries(data[1]).forEach((correpondence, index, array) => {
                 if (index !== 6 && index !== 7 && index !== 8 &&  index !== 9) {
+                    const [d, m, y] = data[1][10].split("-").map(Number);
+                    const delayed = ((new Date().setHours(0, 0, 0, 0) - new Date(y, m - 1, d).setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24)) > 6;
+                    
                     if (index === array.length - 1) {
                         const td = document.createElement("td");
                         td.classList.add("picture_link");
@@ -87,6 +90,10 @@ function getCorrespondences(filter, orderBy) {
                             td.classList.add("on_reception")
                         } else if (data[1][9] == "returned") {
                             td.classList.add("returned")
+                        }
+
+                        if (delayed && !["shipped", "returned"].includes(data[1][9])) {
+                            td.classList.add("delayed")
                         }
 
                         content_container.appendChild(td);
@@ -132,6 +139,10 @@ function getCorrespondences(filter, orderBy) {
                             field.classList.add("returned")
                         }
                         
+                        if (delayed && !["shipped", "returned"].includes(data[1][9])) {
+                            field.classList.add("delayed")
+                        }
+
                         let old_value = ""
                         field.addEventListener("focus", () => {
                             old_value = field.value
@@ -173,6 +184,10 @@ function getCorrespondences(filter, orderBy) {
                             field.classList.add("returned")
                         }
 
+                        if (delayed && !["shipped", "returned"].includes(data[1][9])) {
+                            field.classList.add("delayed")
+                        }
+
                         field.textContent = correpondence[1];
                         content_container.appendChild(field);
                     }
@@ -184,6 +199,109 @@ function getCorrespondences(filter, orderBy) {
     })
 }
 
+const returns_id = []
+
+function addReturn(element) {
+
+    const container = document.getElementById("return-mails-values")
+
+    fetch("/mails/get-mails", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify([element.value, 'id'])
+    })
+    .then(response => response.json())
+    .then(json => {
+        if(json[0].mails.length === 0) {
+            element.classList.add("not_found");
+            return;
+        }
+
+        Object.entries(json[0].mails).forEach(data => {
+
+            if(returns_id.includes(data[1][2])) {
+                element.classList.add("not_found");
+                return;
+            } else if ("almox" !== data[1][9]) {
+                element.classList.add("not_found");
+                return;
+            }
+
+            returns_id.push(data[1][2])
+
+            Object.entries(data[1]).forEach((mail, index, array) => {
+                if([0,1,2,3,4,5,10].includes(index)) {
+                    const td = document.createElement('td')
+
+                    td.innerText = data[1][index]
+                    td.classList.add("remove_button")
+                    td.id = data[1][2]
+
+                    container.appendChild(td)
+
+                    td.addEventListener('click', function(e) {
+                        document.querySelectorAll(`#${e.target.id}`).forEach(b => {
+                            b.remove()
+                        })
+                        returns_id.splice(returns_id.indexOf(e.target.id), 1)
+                    })
+                }
+            })
+
+            const select = document.createElement('select')
+
+            select.id = data[1][2]
+            select.classList.add("return-mails-input")
+            select.name = data[1][1]
+            select.required = true
+
+            select.innerHTML = `
+                <option value="desconhecido">Desconhecido</option>
+                <option value="recusado">Recusado</option>
+                <option value="mudou-se">Mudou-se</option>
+            `
+
+            container.appendChild(select)
+            element.value = ""
+        })
+    })
+}
+
+function genReturn() {
+    if (returns_id.length > 0) {
+        let payload = {};
+
+        returns_id.forEach(id => {
+            const select = document.querySelector(`select#${id}`)
+            payload[id] = [select.value, select.name];
+        })
+
+        console.log(payload)
+        fetch("/mails/generate-return", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(json => {
+            if(json[1] != 200) {
+
+            }
+
+            json[0]
+        })
+        
+    } else {
+        document.getElementById("generate_button").classList.add("not_found");
+        setTimeout(() => {
+            document.getElementById("generate_button").classList.remove("not_found");
+        }, 500)
+    }
+}
 
 function updateReceiver() {
     const input = document.getElementById("file_input");
@@ -508,14 +626,14 @@ function focuses(container) {
         })
         .then(response => response.json())
         .then(data => {
-            if(!["192.168.7.119"].includes(data[0].Message) && !document.getElementById("to_almox_button")) {
+            if(["192.168.7.58", "192.168.7.20", "127.0.0.1"].includes(data[0].Message) && !document.getElementById("to_almox_button")) {
                 document.getElementById(container).insertAdjacentHTML('afterbegin', `
                 <div id="to_almox_button" class="to_almox">
                     <label for="to_almox">Para o Almoxarifado</label>
                     <input type="checkbox" id="to_almox" name="to_almox" value="to_almox" onchange="changeShipContainer(event)">
                 </div>
             `)
-            } 
+            }
             
             if(["192.168.7.58"].includes(data[0].Message)) {
                 document.getElementById("to_almox").click()
@@ -648,8 +766,6 @@ function receivedOnReception() {
 }
 
 
-
-
 document.addEventListener("keydown", function (event) {
     if (event.key == " " && event.target.id == "ar_code") {
         event.preventDefault();
@@ -731,7 +847,7 @@ document.addEventListener("keydown", function (event) {
         if (
             (currentIndex == 6 && event.key === 'Enter') ||
             ((currentIndex == 3 || currentIndex == 4 || currentIndex == 5) &&
-             (event.key === 'Enter' || event.key === 'Tab'))
+            (event.key === 'Enter' || event.key === 'Tab'))
         ) {
             document.getElementById(inputs[currentIndex])?.click();
         }
@@ -749,6 +865,10 @@ document.addEventListener("keydown", function (event) {
                 document.getElementById(inputs[currentIndex]).focus()
             , 200)
         }
+        // } else if(currentIndex != 0) {
+        //     document.getElementById(inputs[0]).focus()
+        // }
+
     } else if ((event.key === 'Enter') && actual_focus === "ship-container") {
         // const inputs = ["mail_code", "receiver_name", "sender_name", "reception-submit"];
 
@@ -782,5 +902,13 @@ document.addEventListener("keydown", function (event) {
         // if (currentIndex == 3 && event.key === 'Enter') {
             document.getElementById('reception-submit')?.click();
         // }
+    } else if (actual_focus === "return-container") {
+        const activeElement = document.activeElement 
+
+        if (event.key === 'Enter' && activeElement.id === 'return_input' && !activeElement.value == "") {
+            addReturn(activeElement)
+        } else if(activeElement.id == 'return_input') {
+            document.getElementById("return_input").classList.remove("not_found")
+        }
     }
 });
