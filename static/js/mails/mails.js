@@ -223,11 +223,11 @@ function updateReceiver() {
         const codigoMatch = json.replaceAll(" ", "").toUpperCase().match(regexCodigo);
         const codigo = codigoMatch ? codigoMatch[1] : null;
 
-        const regexRecebido = /R[E3][CÇ][E3][B8][I1l][D0O][O0]?\s*P[O0]R\s*:\s*([^\n\r]+)/;
+        const regexRecebido = /R[E3][CÇ][E3][B8][I1l][D0O][O0]?\s*(?:P[O0]R\s*:\s*)?([^\n\r]+(?:\r?\n[^\n\r]+)?)/;
         const recebidoMatch = json.replaceAll(" ", "").toUpperCase().match(regexRecebido);
         const recebido = recebidoMatch ? recebidoMatch[1] : null;
         
-        const regexData = /DATA:\s*([0-9Iil\/]{6,12})/i;
+        const regexData = /(?:D[O0]C[UUV][MNN][E3][N][T][O0]|DATA)\s*:\s*([0-9Iil\/]{6,12})/i;
         const dataMatch = json.match(regexData);
 
         const returnDetected = json.replaceAll(" ", "").toUpperCase().includes("DEVOLUCAOAOSCORREIOS") ||
@@ -261,8 +261,9 @@ function updateReceiver() {
             const month = raw.slice(2, 4);
             const year = raw.slice(4, 8);
 
-            data = `${year}-${month}-${day}`
+            data = `${day}-${month}-${year}`
         }
+
 
 
         if (data == null || isNaN(new Date(data).getTime())) {
@@ -271,7 +272,7 @@ function updateReceiver() {
             const mm = String(today.getMonth() + 1).padStart(2, '0');
             const yyyy = today.getFullYear();
 
-            data = `${dd}-${mm}-${yyyy}`;
+            data = `${yyyy}-${mm}-${dd}`;
         }
 
         img_container.classList.add("pp-small")
@@ -525,18 +526,44 @@ function focuses(container) {
 
         const img_container = document.getElementById("image-container")
 
+        const file_input = document.getElementById("file_input")
+
         img_container.addEventListener("click", () => {
-            const file_input = document.getElementById("file_input")
             file_input.click()
-            file_input.addEventListener("change", () => {
-                const file = file_input.files[0]
-                if (file) {
-                    img_container.innerHTML = `
-                        <img id="picture-preview" class="picture-preview" src="${URL.createObjectURL(file)}" alt="image">
-                    `
-                }
-            })
         })
+
+        file_input.addEventListener("change", () => {
+            const file = file_input.files[0]
+            if (file) {
+                img_container.innerHTML = `
+                    <img id="picture-preview" class="picture-preview" src="${URL.createObjectURL(file)}" alt="image">
+                `
+            }
+        })
+        
+        const ship_mall = document.getElementById("ship-mall")
+
+        ship_mall.addEventListener("drop", (e) => {
+            ship_mall.classList.remove("dragover");
+            e.preventDefault();
+            
+            const files = e.dataTransfer.files;
+            file_input.files = files;
+
+            img_container.innerHTML = `
+                <img id="picture-preview" class="picture-preview" src="${URL.createObjectURL(file_input.files[0])}" alt="image">
+            `
+        });
+
+        ship_mall.addEventListener("dragover", (e) => {
+            ship_mall.classList.add("dragover");
+            e.preventDefault();
+        })
+
+        
+        ship_mall.addEventListener("dragleave", () => {
+            ship_mall.classList.remove("dragover");
+        });
     }
 }
 
