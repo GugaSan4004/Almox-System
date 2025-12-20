@@ -430,7 +430,7 @@ select {
 }
 
 .returned {
-    color: #b0b0b0;
+    color: #a4a4a49c;
 }
 
 .ship-almox {
@@ -458,14 +458,12 @@ select {
     color: #ff3030 !important;
 }
 
-
-
 .return-container {
     display: grid;
     grid-template-rows: 4cm 0.96fr;
     min-width: -webkit-fill-available;
     min-width: -moz-available;
-    margin-top: 20vh;
+    margin-top: 10vh;
 }
 
 .return-mails-container {
@@ -475,7 +473,7 @@ select {
     grid-template-rows: 5vh 2vh;
     text-align: center;
     font-size: 14px;
-    margin-top: 4vh;
+    margin-top: 15vh;
     margin-left: 2vh;
     margin-right: 2vh;
     grid-gap: 6px 0;
@@ -485,14 +483,13 @@ select {
     min-width: -moz-available;
     max-height: 76vh;
     overflow-y: auto;
-    margin-bottom: 4vh;
+    margin-bottom: 2.3vh;
 }
 
 
 .return-container .helpers {
     display: grid;
     grid-template-rows: repeat(3, 3em);
-    margin-top: 1cm;
     row-gap: 16px;
     width: 16cm;
     justify-self: center;
@@ -549,6 +546,19 @@ select {
     align-content: end;
 }
 
+#return-message {
+font-size: 2rem;
+}
+
+.locked::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: transparent;
+    z-index: 999999;
+    pointer-events: all;
+    cursor: wait;
+}
 /* 
 #generate-button {
     grid-row: 2;

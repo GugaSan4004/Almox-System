@@ -72,7 +72,7 @@
                 <h1>🔴 Atrasada (+6 dias)</h1>
                 <h1>🟡 Na recepção</h1>
                 <h1>⚪ No almoxarifado / Entregue</h1>
-                <h1>⚫ Devolvido</h1>
+                <h1>⚫ Devolvido / Pre-Devolvido</h1>
             </div>
             <div class="helpers">
                 <input id="search_input" type="search" placeholder="Nome ou Codigo da Correspondencia!">
@@ -113,7 +113,8 @@
 
         <form id="return-container" class="container return-container" style="display: none;">
             <div class="helpers">
-                <input id="return_input" type="search" placeholder="Nome ou Codigo da Correspondencia!">
+                <h1 id="return-message">Escaneie o codigo da correspondencia!</h1>
+                <input id="return_input" type="search" placeholder="Codigo da Correspondencia!">
                 <button id="generate_button" onclick="genReturn()" type="button">Gerar</button>
             </div>
             <div class="return-mails-container" id="return-mails-container">

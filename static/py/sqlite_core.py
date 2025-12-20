@@ -55,7 +55,7 @@ class init:
                 cur.execute(
                     f"UPDATE mails SET {column.lower()} = ? WHERE code = ?",
                     (
-                    value.title(),
+                    value.title() if column.lower() != "status" else value,
                     code.upper()
                     )
                 )

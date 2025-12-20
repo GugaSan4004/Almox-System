@@ -6,8 +6,8 @@ import webbrowser
 from flask_socketio import SocketIO
 from static.py.screen import screen
 from static.py.cam_service import camera
-from static.py import imareocr, sqlite_core, docgenerator
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from static.py import imareocr, return_generator, sqlite_core
+from flask import Flask, request, jsonify, render_template, send_from_directory, send_file
 
 
 
@@ -19,7 +19,7 @@ from flask import Flask, request, jsonify, render_template, send_from_directory
 
 
 # FOLDER = r"\\192.168.7.252\dados\OPERACOES\13-ALMOXARIFADO\0 - Sistema Almox"
-FOLDER = r"C:\Users\GUGA4\Documents\Almox-system"
+FOLDER = r"C:\Users\GUGA4\Desktop\almox-system"
 
 sqlite = sqlite_core.init(FOLDER)
 
@@ -28,7 +28,7 @@ mails_db = sqlite_core.init.mails(sqlite)
 vision_db = sqlite_core.init.vision(sqlite)
 
 imgReader = imareocr.init(FOLDER, vision_db)
-docgen = docgenerator.init(FOLDER)
+returngen = return_generator.init(FOLDER)
 
 
 app = Flask(__name__)
@@ -690,9 +690,16 @@ def update_column():
 def generate_return():
     data = request.get_json()
 
-    file_path = docgen.generate_return(
+    file_path = returngen.generate_return(
         data=data
     )
+    
+    for code in data:
+        mails_db.update(
+            code=code,
+            value="returned",
+            column="status"
+        )
 
     return jsonify({
         "Message": file_path

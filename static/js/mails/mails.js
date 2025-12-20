@@ -199,11 +199,20 @@ function getCorrespondences(filter, orderBy) {
     })
 }
 
-const returns_id = []
+let returns_id = []
 
 function addReturn(element) {
 
     const container = document.getElementById("return-mails-values")
+    const message = document.getElementById("return-message")
+
+    const regexCodigo = /([A-Z]{2}\d{9}[A-Z]{2})/;
+
+    if(!element.value.replaceAll(" ", "").toUpperCase().match(regexCodigo)) {
+        element.classList.add("not_found");
+        message.innerText = "Codigo invalido!"
+        return;
+    }
 
     fetch("/mails/get-mails", {
         method: "POST",
@@ -214,18 +223,21 @@ function addReturn(element) {
     })
     .then(response => response.json())
     .then(json => {
+
         if(json[0].mails.length === 0) {
             element.classList.add("not_found");
+            message.innerText = "Correspondencia não encontrada!"
             return;
         }
 
         Object.entries(json[0].mails).forEach(data => {
-
             if(returns_id.includes(data[1][2])) {
                 element.classList.add("not_found");
+                message.innerText = 'Correspondencia já adicionada!';
                 return;
             } else if ("almox" !== data[1][9]) {
                 element.classList.add("not_found");
+                message.innerText = 'Correspondencia não disponivel!'
                 return;
             }
 
@@ -278,7 +290,11 @@ function genReturn() {
             payload[id] = [select.value, select.name];
         })
 
-        console.log(payload)
+        const mails_container = document.getElementById("return-mails-container")
+
+        document.body.classList.add("locked")
+        mails_container.classList.add("loading")
+
         fetch("/mails/generate-return", {
             method: "POST",
             headers: {
@@ -289,11 +305,34 @@ function genReturn() {
         .then(response => response.json())
         .then(json => {
             if(json[1] != 200) {
-
+                return;
             }
 
-            json[0]
-        })
+            let iframe = document.getElementById("print-frame");
+
+            if (!iframe) {
+                iframe = document.createElement("iframe");
+                iframe.id = "print-frame";
+                iframe.style.display = "none";
+                document.body.appendChild(iframe);
+            }
+
+            iframe.src = json[0].Message;
+
+            iframe.onload = () => {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+                
+                document.body.classList.remove("locked")
+                mails_container.classList.remove("loading")
+                returns_id = []
+
+                document.querySelectorAll("#return-mails-values > *").forEach(b => {
+                    b.remove()
+                })
+            };
+
+        });
         
     } else {
         document.getElementById("generate_button").classList.add("not_found");
@@ -538,9 +577,23 @@ function updateReceiver() {
 
                         setTimeout(() => document.querySelectorAll(".db-container-values td").forEach(b => b.classList.add("highlight")), 100)
                         setTimeout(() => document.querySelectorAll(".db-container-values input").forEach(b => b.classList.add("highlight")), 100)
+                        
+                        let ip = "" 
+
+                        fetch("/mails/update", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify(payload)
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            ip = data[0].Message
+                        })
 
                         container.innerHTML = `        
-                            <div id="to_almox_button" class="to_almox">
+                            <div id="to_almox_button" class="to_almox" ${["192.168.7.58", "192.168.7.20", "127.0.0.1"].includes(ip) ? "" : "style='display: none'"}>
                                 <label for="to_almox">Para o Almoxarifado</label>
                                 <input type="checkbox" id="to_almox" name="to_almox" value="to_almox" onchange="changeShipContainer(event)">
                             </div>
@@ -934,8 +987,9 @@ document.addEventListener("keydown", function (event) {
 
         if (event.key === 'Enter' && activeElement.id === 'return_input' && !activeElement.value == "") {
             addReturn(activeElement)
-        } else if(activeElement.id == 'return_input') {
+        } else if(activeElement.id == 'return_input' && document.getElementById("return_input").classList.contains('not_found')) {
             document.getElementById("return_input").classList.remove("not_found")
+            document.getElementById("return-message").innerText = "Escaneie o codigo da correspondencia!"
         }
     }
 });
