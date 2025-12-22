@@ -46,7 +46,7 @@ class init:
             cells = rows[index].cells
             
             cells[0].text = ar_code
-            cells[1].text = destinatario
+            cells[1].text = destinatario[:40]
             cells[2].text = motivo
             
             for cell in cells:

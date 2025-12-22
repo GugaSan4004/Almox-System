@@ -1,13 +1,18 @@
+
 import re
+import os
 import shutil
+import filetype
 import datetime
 import webbrowser
 
+from PIL import Image
+from io import BytesIO
 from flask_socketio import SocketIO
 from static.py.screen import screen
 from static.py.cam_service import camera
 from static.py import imareocr, return_generator, sqlite_core
-from flask import Flask, request, jsonify, render_template, send_from_directory, send_file
+from flask import Flask, abort, request, jsonify, render_template, send_from_directory, send_file
 
 
 
@@ -18,8 +23,8 @@ from flask import Flask, request, jsonify, render_template, send_from_directory,
 
 
 
-# FOLDER = r"\\192.168.7.252\dados\OPERACOES\13-ALMOXARIFADO\0 - Sistema Almox"
-FOLDER = r"C:\Users\GUGA4\Desktop\almox-system"
+FOLDER = r"\\192.168.7.252\dados\OPERACOES\13-ALMOXARIFADO\0 - Sistema Almox"
+# FOLDER = r"C:\Users\GUGA4\Desktop\almox-system"
 
 sqlite = sqlite_core.init(FOLDER)
 
@@ -30,8 +35,10 @@ vision_db = sqlite_core.init.vision(sqlite)
 imgReader = imareocr.init(FOLDER, vision_db)
 returngen = return_generator.init(FOLDER)
 
-
 app = Flask(__name__)
+
+app.config["ENV"] = "production"
+app.config["DEBUG"] = False
 
 Socket = SocketIO(
     app,
@@ -40,6 +47,8 @@ Socket = SocketIO(
     ping_timeout=60,
     cors_allowed_origins="*"
 )
+
+
 
 # ################################ #
 #          Setting Global          #
@@ -77,6 +86,13 @@ meses = {
 with app.app_context():
     print("> Server initiated successfully!")
     webbrowser.open("http://192.168.7.20/tools-loan")
+
+@app.before_request
+def firewall():
+    data = request.get_data(as_text=True)
+
+    if len(data) > 1_000_000:
+        abort(413)
 
 @app.route("/")
 def fallback():
@@ -283,18 +299,34 @@ def upload_file():
             }, 400)
         
         file = request.files["file"]
-        
+    
         tmp_path = FOLDER + r"\pictures\mails\temp_image.jpg"
-        
+
         file.save(tmp_path)
+        
+        try:
+            Image.open(file.stream).verify()
+        except Exception as e:
+            sqlite.log_edit(
+                route="/mails/upload_file",
+                method="[POST]",
+                id=None,
+                code=400,
+                message="Invalid Values",
+                fields_changed=None,
+                values=None,
+                ip=request.remote_addr
+            )
+            return jsonify({
+                "Message": "Error: Tipo de arquivo invalido!"
+            }, 400)
         
         global lastImage
 
         lastImage = tmp_path
         
         extracted_text = imgReader.extractText(tmp_path)
-
-
+        
         sqlite.log_edit(
             route="/mails/upload_file",
             method="[POST]",
@@ -375,8 +407,13 @@ def update():
             
             if not infos:
                 continue
-
+            
             infos = infos[0]
+            
+            if infos[13] != "":
+                return jsonify({
+                    "Message": "Correspondencia já devolvida detectada!"
+                }, 400)
 
             pname = (
                 str(infos[4][:3].upper()) +
@@ -408,7 +445,10 @@ def update():
                 values='{"receive_name": "' + motivo + '", "receive_date": "' + date + '", "photo_id": "' + pname + '", "status": "' + code + '"}',
                 ip=request.remote_addr
             )
-            
+        
+        if(os.path.exists(lastImage)):
+            os.remove(lastImage)
+
         return jsonify({
             "Message": "Devoluções registradas",
             "type": "returns"
@@ -450,6 +490,7 @@ def update():
         return jsonify({
             "Message": "Correspondência não encontrada"
         }, 404)
+        
     elif infos[0][9].lower() == "shipped":
         sqlite.log_edit(
             route="/mails/update",
@@ -721,6 +762,7 @@ def update_pictures():
 
 
 if __name__ == "__main__":
+    
     Socket.run(
         app,
         host="0.0.0.0",

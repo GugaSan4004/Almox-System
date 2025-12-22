@@ -1,6 +1,7 @@
 import time
 import queue
 import ctypes
+import pyautogui
 import threading
         
 class ScreenWorker(threading.Thread):
@@ -16,6 +17,8 @@ class ScreenWorker(threading.Thread):
         while True:
             ctypes.windll.user32.keybd_event(0x7E, 0, 0, 0)
             ctypes.windll.user32.keybd_event(0x7E, 0, 0x0002, 0)
+            
+            pyautogui.click(677, 221)
             time.sleep(290)
 
 screen = ScreenWorker()

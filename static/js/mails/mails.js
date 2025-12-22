@@ -51,8 +51,8 @@ function getCorrespondences(filter, orderBy) {
                 <b id="type">Tipo</b>
                 <b id="priority">Prioridade</b>
                 <b id="join_date">Data Entrada</b>
-                <b id="receive_name">Quem Recebeu</b>
-                <b id="receive_date">Data Recebimento</b>
+                <b id="receive_name">Recebedor / Motivo</b>
+                <b id="receive_date">Data Saida</b>
                 <b id="photo_id">Comprovante</b>
             </div>
         `
@@ -358,6 +358,8 @@ function updateReceiver() {
     const ur_button = document.getElementById("updateReceiver-button")
 
     if(input.files[0]) {
+        ur_button.classList.remove("not_found")
+
         ur_button.disabled = true
         document.getElementById("file_input").disabled = true
 
@@ -370,12 +372,21 @@ function updateReceiver() {
     })
     .then(response => response.json())
     .then(json => {
+        if (json[1] !== 200) {
+            ur_button.disabled = false
+            ur_button.classList.add("not_found")
+
+            document.getElementById("file_input").disabled = false
+            
+            img_container.classList.remove("loading")
+        }
+
         const text = json
             .replace(/\r/g, "")
             .replace(/\n+/g, "\n")
             .replace(/\s+/g, " ")
-            .toUpperCase();
-        
+            .toUpperCase();  
+
         const regexCodigo = /([A-Z]{2}\d{9}[A-Z]{2})/;
         const codigoMatch = json.replaceAll(" ", "").toUpperCase().match(regexCodigo);
         const codigo = codigoMatch ? codigoMatch[1] : null;
@@ -700,7 +711,9 @@ function focuses(container) {
         const file_input = document.getElementById("file_input")
 
         img_container.addEventListener("click", () => {
-            file_input.click()
+            if (!img_container.classList.contains("pp-small")) {
+                file_input.click()
+            }
         })
 
         file_input.addEventListener("change", () => {

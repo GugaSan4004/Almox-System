@@ -1,13 +1,24 @@
-import os
+import os, json
+
 import io
 import time
 import datetime
 from pdf2image import convert_from_path
+from google.oauth2.service_account import Credentials
 
 class init:
     def __init__(self, path, vision_db):
+        raw = os.environ.get("GOOGLE_VISION_JSON")
+        
+        if not raw:
+            raise SystemExit("Credencial Google Vision não configurada")
+
+        self.credentials = Credentials.from_service_account_info(
+            json.loads(raw),
+            scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        )
+        
         os.environ["PATH"] += os.pathsep + r"C:\poppler\Library\bin"
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = path + r"\api-key\rock-tower-480410-d2-446c98045165.json"
 
         from google.cloud import vision_v1
         from google.cloud import monitoring_v3
@@ -99,7 +110,7 @@ class init:
     def extractText(self, path):
         if(self.can_i_run()):
             path = self.load_image(path)
-            client = self.vision.ImageAnnotatorClient()
+            client = self.vision.ImageAnnotatorClient(credentials=self.credentials)
 
             with io.open(path, "rb") as img_file:
                 content = img_file.read()

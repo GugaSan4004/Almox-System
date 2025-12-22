@@ -75,7 +75,7 @@
                 <h1>⚫ Devolvido / Pre-Devolvido</h1>
             </div>
             <div class="helpers">
-                <input id="search_input" type="search" placeholder="Nome ou Codigo da Correspondencia!">
+                <input id="search_input" type="search" placeholder="Filtro (id, nome, tipo, Etc)!">
                 <button id="search_button" onclick="getCorrespondences(document.getElementById('search_input').value)">Buscar</button>
             </div>
         </div>
@@ -103,8 +103,8 @@
             </form>
 
             <div class="ship-container ship-mall" id="ship-mall">
-                <input type="file" id="file_input" style="display: none">
-                <div id="image-container" class="image-container">
+                <input type="file" id="file_input" accept=".jpg, .jpeg, .png, .jpe" style="display: none">
+                <div id="image-container" class="image-container" onclick="">
                     Clique para selecionar uma imagem!
                 </div>
                 <button class="submit" id="updateReceiver-button" onclick="updateReceiver()">Enviar</button>
